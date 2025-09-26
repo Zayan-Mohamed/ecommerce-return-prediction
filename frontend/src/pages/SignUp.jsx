@@ -116,50 +116,65 @@ export default function SignUp() {
   return (
     <div className="min-h-screen flex">
       {/* Left Panel - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 relative">
-        <div className="absolute inset-0 bg-black bg-opacity-20"></div>
-        <div className="relative z-10 flex flex-col justify-center items-center text-white p-12">
-          <div className="mb-6">
-            <ShoppingBagIcon className="h-16 w-16 text-white" />
-          </div>
-          <h1 className="text-4xl font-bold mb-4 text-center">ReturnPredict</h1>
-          <p className="text-xl text-center leading-relaxed max-w-lg">
-            Join thousands of e-commerce businesses using AI to predict and
-            reduce returns
-          </p>
-          <div className="mt-12 grid grid-cols-1 gap-6 max-w-sm">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                <CurrencyDollarIcon className="h-4 w-4 text-white" />
-              </div>
-              <span>Reduce return costs by up to 30%</span>
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 relative overflow-hidden">
+        {/* Background decoration */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-8 -left-8 w-48 h-48 bg-gradient-to-br from-indigo-200/40 to-purple-200/40 rounded-full blur-3xl"></div>
+          <div className="absolute -bottom-8 -right-8 w-64 h-64 bg-gradient-to-br from-purple-200/40 to-pink-200/40 rounded-full blur-3xl"></div>
+          <div className="absolute top-1/2 right-1/4 w-32 h-32 bg-gradient-to-br from-blue-200/30 to-indigo-200/30 rounded-full blur-2xl"></div>
+        </div>
+        
+        <div className="relative z-10 flex flex-col justify-center items-center p-12 w-full">
+          <div className="flex flex-col items-center w-full max-w-lg mx-auto">
+            <div className="mb-8 p-4 bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg">
+              <ShoppingBagIcon className="h-16 w-16 text-indigo-600" />
             </div>
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+            <h1 className="text-5xl font-bold mb-6 text-center bg-gradient-to-r from-indigo-700 to-purple-700 bg-clip-text text-transparent">
+              ReturnPredict
+            </h1>
+            <p className="text-xl text-center leading-relaxed text-gray-700 font-medium mb-12">
+              Join thousands of e-commerce businesses using AI to predict and reduce returns
+            </p>
+            
+            <div className="grid grid-cols-1 gap-6 w-full max-w-sm">
+              <div className="flex items-center space-x-4 bg-white/70 backdrop-blur-sm rounded-xl p-4 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <CurrencyDollarIcon className="h-6 w-6 text-white" />
+                </div>
+                <span className="font-semibold text-gray-800">Reduce return costs by up to 30%</span>
               </div>
-              <span>98.5% prediction accuracy</span>
-            </div>
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                <RocketLaunchIcon className="h-4 w-4 text-white" />
+              <div className="flex items-center space-x-4 bg-white/70 backdrop-blur-sm rounded-xl p-4 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <span className="font-semibold text-gray-800">98.5% prediction accuracy</span>
               </div>
-              <span>Get started in minutes</span>
+              <div className="flex items-center space-x-4 bg-white/70 backdrop-blur-sm rounded-xl p-4 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <RocketLaunchIcon className="h-6 w-6 text-white" />
+                </div>
+                <span className="font-semibold text-gray-800">Get started in minutes</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Right Panel - Sign Up Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white">
         <div className="max-w-md w-full">
           <div className="text-center mb-8">
-            <div className="lg:hidden flex justify-center mb-4">
-              <ShoppingBagIcon className="h-10 w-10 text-indigo-600" />
+            <div className="lg:hidden flex justify-center mb-6">
+              <div className="p-3 bg-emerald-100 rounded-2xl">
+                <ShoppingBagIcon className="h-10 w-10 text-emerald-600" />
+              </div>
             </div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-3">
               Create your account
             </h2>
-            <p className="text-gray-600">
+            <p className="text-gray-600 text-lg">
               Start predicting returns with AI today
             </p>
           </div>
@@ -317,7 +332,7 @@ export default function SignUp() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
+              className="w-full flex justify-center py-4 px-6 border border-transparent rounded-xl shadow-lg text-base font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-[1.02] hover:shadow-xl"
             >
               {loading ? (
                 <div className="flex items-center">

@@ -3,6 +3,7 @@ import {
   Routes,
   Route,
   Navigate,
+  useLocation,
 } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -23,12 +24,19 @@ import LandingPage from "./pages/LandingPage";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
 
-function App() {
+function AppContent() {
+  const location = useLocation();
+  const isDashboardRoute = location.pathname.startsWith('/dashboard') || 
+                          location.pathname.startsWith('/add-data') || 
+                          location.pathname.startsWith('/history') || 
+                          location.pathname.startsWith('/reports') || 
+                          location.pathname.startsWith('/profile') || 
+                          location.pathname.startsWith('/settings');
+
   return (
-    <AuthProvider>
-      <Router>
-        <Header />
-        <main>
+    <>
+      {!isDashboardRoute && <Header />}
+      <main>
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<LandingPage />} />
@@ -54,6 +62,15 @@ function App() {
           </Routes>
         </main>
         <Footer />
+      </>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <AppContent />
       </Router>
     </AuthProvider>
   );
