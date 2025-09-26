@@ -1,11 +1,12 @@
 """
-Model Inference Agent
-Purpose: Execute the trained model for predictions
+Pure Model Inference Agent
+Purpose: Execute trained models for predictions on preprocessed data
 Functions:
-- Load the trained binary classification model
-- Process preprocessed features through the model
+- Load and manage trained binary classification models
+- Execute model inference on preprocessed features
 - Return probability scores and binary predictions
 - Handle model versioning and fallback mechanisms
+Note: This agent expects preprocessed data from Data Preprocessing Agent
 """
 
 import os
@@ -24,7 +25,17 @@ logger = logging.getLogger(__name__)
 
 class ModelInferenceAgent:
     """
-    Agent responsible for loading trained models and executing predictions
+    Pure Model Inference Agent - Only handles model operations
+    
+    This agent assumes data has already been preprocessed by:
+    - Data Preprocessing Agent (validation, cleaning)
+    - Feature Engineering Agent (encoding, derived features)
+    
+    Responsibilities:
+    - Load and manage trained ML models
+    - Execute model inference on preprocessed data
+    - Handle model fallbacks and error scenarios
+    - Provide model metadata and health status
     """
     
     def __init__(self, models_dir: str = None):
@@ -145,121 +156,66 @@ class ModelInferenceAgent:
         }
         logger.info("Dummy model created for testing")
     
-    def _validate_features(self, features: Dict[str, Any]) -> bool:
+    def _validate_preprocessed_data(self, feature_df: pd.DataFrame) -> bool:
         """
-        Validate input features format and content
+        Validate that preprocessed data matches model expectations
         
         Args:
-            features: Dictionary of feature values
+            feature_df: DataFrame with preprocessed features
             
         Returns:
-            bool: True if features are valid
+            bool: True if data is valid for model inference
         """
-        required_features = [
-            'Product_Category', 'Product_Price', 'Order_Quantity', 'Return_Reason',
-            'User_Age', 'User_Gender', 'Payment_Method', 'Shipping_Method',
-            'Discount_Applied', 'Total_Order_Value',
-            'Order_Year', 'Order_Month', 'Order_Weekday', 'User_Location_Num'
-        ]
-        
-        # Check if all required features are present
-        missing_features = [f for f in required_features if f not in features]
-        if missing_features:
-            logger.error(f"Missing required features: {missing_features}")
-            return False
-        
-        # Validate data types and ranges
         try:
-            if not isinstance(features.get('Product_Price', 0), (int, float)):
-                logger.error("Product_Price must be a number")
+            # Check if DataFrame is empty
+            if feature_df.empty:
+                logger.error("Empty DataFrame provided")
                 return False
-                
-            if not isinstance(features.get('Order_Quantity', 0), (int, float)):
-                logger.error("Order_Quantity must be a number")
+            
+            # Check if model is loaded
+            model = self.primary_model or self.fallback_model
+            if model is None:
+                logger.error("No model available for validation")
                 return False
+            
+            # Check feature names match (if model has this attribute)
+            if hasattr(model, 'feature_names_in_'):
+                expected_features = set(model.feature_names_in_)
+                provided_features = set(feature_df.columns)
                 
-            if not isinstance(features.get('User_Age', 0), (int, float)):
-                logger.error("User_Age must be a number")
-                return False
-                
+                if expected_features != provided_features:
+                    missing = expected_features - provided_features
+                    extra = provided_features - expected_features
+                    
+                    if missing:
+                        logger.error(f"Missing required features: {missing}")
+                    if extra:
+                        logger.error(f"Unexpected features: {extra}")
+                    return False
+            
             return True
             
         except Exception as e:
-            logger.error(f"Error validating features: {str(e)}")
+            logger.error(f"Error validating preprocessed data: {str(e)}")
             return False
     
-    def _map_features(self, features: Dict[str, Any]) -> pd.DataFrame:
-        """
-        Map input features to the format expected by the trained model
-        
-        Args:
-            features: Dictionary with user-friendly feature names
-            
-        Returns:
-            DataFrame with model-expected feature names in correct order
-        """
-        # Categorical mappings (these should match the preprocessing used during training)
-        category_map = {
-            'Electronics': 1, 'Clothing': 2, 'Home & Garden': 3, 'Sports': 4, 'Books': 5
-        }
-        
-        gender_map = {
-            'Male': 1, 'Female': 2
-        }
-        
-        payment_map = {
-            'Credit Card': 1, 'Debit Card': 2, 'PayPal': 3, 'Bank Transfer': 4
-        }
-        
-        shipping_map = {
-            'Standard': 1, 'Express': 2, 'Next Day': 3
-        }
-        
-        return_reason_map = {
-            'Unknown': 0, 'Defective': 1, 'Wrong Size': 2, 'Not as Described': 3, 'Changed Mind': 4
-        }
-        
-        location_map = {
-            'California': 1, 'New York': 2, 'Texas': 3, 'Florida': 4, 
-            'Illinois': 5, 'Pennsylvania': 6, 'Ohio': 7, 'Georgia': 8,
-            'North Carolina': 9, 'Michigan': 10
-        }
-        
-        # Create features in the exact order expected by the model with proper encoding
-        model_features = {
-            'Product_Category': category_map.get(features.get('product_category', 'Electronics'), 1),
-            'Product_Price': float(features.get('price', 0)),
-            'Order_Quantity': int(features.get('quantity', 1)),
-            'Return_Reason': return_reason_map.get('Unknown', 0),
-            'User_Age': int(features.get('age', 30)),
-            'User_Gender': gender_map.get(features.get('gender', 'Male'), 1),
-            'Payment_Method': payment_map.get(features.get('payment_method', 'Credit Card'), 1),
-            'Shipping_Method': shipping_map.get('Standard', 1),
-            'Discount_Applied': float(0),
-            'Total_Order_Value': float(features.get('price', 0)) * int(features.get('quantity', 1)),
-            'Order_Year': int(2024),
-            'Order_Month': int(1),
-            'Order_Weekday': int(1),
-            'User_Location_Num': location_map.get(features.get('location', 'California'), 1)
-        }
-        
-        # Convert to DataFrame with single row
-        return pd.DataFrame([model_features])
 
-    def predict_single(self, features: Dict[str, Any], use_fallback: bool = False) -> Dict[str, Any]:
+
+    def predict_single(self, preprocessed_features: pd.DataFrame, use_fallback: bool = False) -> Dict[str, Any]:
         """
-        Make a single prediction using the loaded model
+        Execute model inference on preprocessed features
         
         Args:
-            features: Dictionary containing preprocessed features
+            preprocessed_features: DataFrame with features already preprocessed and encoded
             use_fallback: Whether to use fallback model
             
         Returns:
             Dictionary containing prediction results
         """
         try:
-            # Map features to model format
-            feature_df = self._map_features(features)
+            # Validate preprocessed data
+            if not self._validate_preprocessed_data(preprocessed_features):
+                raise ValueError("Invalid preprocessed data")
             
             # Select model to use
             model = self.fallback_model if use_fallback else self.primary_model
@@ -268,26 +224,24 @@ class ModelInferenceAgent:
             if model is None:
                 if not use_fallback and self.fallback_model is not None:
                     logger.warning("Primary model not available, using fallback")
-                    return self.predict_single(features, use_fallback=True)
+                    return self.predict_single(preprocessed_features, use_fallback=True)
                 else:
                     raise ValueError("No models available for prediction")
-            
-            # feature_df is already a DataFrame from _map_features
             
             # Make prediction
             try:
                 # Get probability scores
                 if hasattr(model, 'predict_proba'):
-                    probabilities = model.predict_proba(feature_df)[0]
+                    probabilities = model.predict_proba(preprocessed_features)[0]
                     # Assuming binary classification: [prob_no_return, prob_return]
                     return_probability = probabilities[1] if len(probabilities) > 1 else probabilities[0]
                 else:
                     # If no predict_proba, use predict and convert
-                    prediction = model.predict(feature_df)[0]
+                    prediction = model.predict(preprocessed_features)[0]
                     return_probability = float(prediction)
                 
                 # Get binary prediction
-                binary_prediction = model.predict(feature_df)[0]
+                binary_prediction = model.predict(preprocessed_features)[0]
                 
                 # Create prediction result
                 result = {
@@ -301,7 +255,7 @@ class ModelInferenceAgent:
                         'model_type': str(type(model).__name__),
                         'prediction_timestamp': datetime.now().isoformat()
                     },
-                    'feature_importance': self._get_feature_importance(model, feature_df.iloc[0].to_dict()) if hasattr(model, 'feature_importances_') else {},
+                    'feature_importance': self._get_feature_importance(model, preprocessed_features.iloc[0].to_dict()) if hasattr(model, 'feature_importances_') else {},
                     'metadata': self.model_metadata.get(model_name, {})
                 }
                 
@@ -312,28 +266,28 @@ class ModelInferenceAgent:
                 logger.error(f"Error during model prediction: {str(model_error)}")
                 if not use_fallback and self.fallback_model is not None:
                     logger.info("Attempting fallback model...")
-                    return self.predict_single(features, use_fallback=True)
+                    return self.predict_single(preprocessed_features, use_fallback=True)
                 raise
                 
         except Exception as e:
             logger.error(f"Error in predict_single: {str(e)}")
             raise
     
-    def predict_batch(self, features_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def predict_batch(self, preprocessed_features_list: List[pd.DataFrame]) -> List[Dict[str, Any]]:
         """
-        Make predictions for multiple samples
+        Make predictions for multiple preprocessed samples
         
         Args:
-            features_list: List of feature dictionaries
+            preprocessed_features_list: List of preprocessed DataFrames
             
         Returns:
             List of prediction results
         """
         results = []
         
-        for i, features in enumerate(features_list):
+        for i, preprocessed_features in enumerate(preprocessed_features_list):
             try:
-                result = self.predict_single(features)
+                result = self.predict_single(preprocessed_features)
                 results.append({
                     'sample_id': i,
                     'success': True,
@@ -409,26 +363,26 @@ class ModelInferenceAgent:
             Health status information
         """
         try:
-            # Test with dummy data using the actual feature names from the trained model
-            dummy_features = {
+            # Test with dummy preprocessed data using the actual feature names from the trained model
+            dummy_data = pd.DataFrame([{
                 'Product_Category': 1,
-                'Product_Price': 0.5,
+                'Product_Price': 199.99,
                 'Order_Quantity': 1,
                 'Return_Reason': 0,
-                'User_Age': 0.2,
+                'User_Age': 30,
                 'User_Gender': 1,
                 'Payment_Method': 1,
                 'Shipping_Method': 1,
-                'Discount_Applied': 0.5,
-                'Total_Order_Value': 0.5,
+                'Discount_Applied': 0.0,
+                'Total_Order_Value': 199.99,
                 'Order_Year': 2024,
                 'Order_Month': 6,
                 'Order_Weekday': 2,
-                'User_Location_Num': 50
-            }
+                'User_Location_Num': 1
+            }])
             
             # Try prediction
-            result = self.predict_single(dummy_features)
+            result = self.predict_single(dummy_data)
             
             return {
                 'status': 'healthy',
@@ -473,20 +427,27 @@ if __name__ == "__main__":
     # Initialize agent
     agent = ModelInferenceAgent()
     
-    # Test with sample data
-    sample_features = {
-        'price': 199.99,
-        'quantity': 2,
-        'product_category': 'Electronics',
-        'gender': 'Female',
-        'payment_method': 'Credit Card',
-        'age': 25,
-        'location': 'California'
-    }
+    # Test with preprocessed sample data (this would normally come from preprocessing agents)
+    sample_preprocessed_data = pd.DataFrame([{
+        'Product_Category': 1,  # Electronics encoded
+        'Product_Price': 199.99,
+        'Order_Quantity': 2,
+        'Return_Reason': 0,  # Unknown
+        'User_Age': 25,
+        'User_Gender': 2,  # Female encoded
+        'Payment_Method': 1,  # Credit Card encoded
+        'Shipping_Method': 1,  # Standard encoded
+        'Discount_Applied': 0.0,
+        'Total_Order_Value': 399.98,  # price * quantity
+        'Order_Year': 2024,
+        'Order_Month': 9,
+        'Order_Weekday': 4,
+        'User_Location_Num': 1  # California encoded
+    }])
     
     try:
         # Single prediction
-        result = agent.predict_single(sample_features)
+        result = agent.predict_single(sample_preprocessed_data)
         print("Prediction Result:")
         print(json.dumps(result, indent=2))
         
