@@ -24,6 +24,8 @@ frontend/.vscode/*
 *.sln
 *.sw?
 
+*package-lock.json
+
 # Python
 __pycache__/
 *.py[cod]

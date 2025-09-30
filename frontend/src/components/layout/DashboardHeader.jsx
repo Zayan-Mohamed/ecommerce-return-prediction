@@ -25,7 +25,7 @@ const DashboardHeader = () => {
   }
 
   return (
-    <header className="bg-white/90 backdrop-blur-md shadow-lg border-b border-indigo-100 sticky top-0 z-40 relative">
+    <header className="bg-white/90 backdrop-blur-md shadow-lg border-b border-indigo-100 sticky top-0 z-40">
       <div className="absolute -top-4 -right-4 w-24 h-24 bg-gradient-to-br from-indigo-200/20 to-purple-200/20 rounded-full blur-xl"></div>
       <div className="max-w-full mx-auto px-6 xl:px-12 2xl:px-16">
         <div className="flex items-center justify-between h-16 relative z-10">

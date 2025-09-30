@@ -4,7 +4,7 @@ Purpose: Handle HTTP requests for return predictions
 """
 
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Dict, List, Optional, Any
 import logging
 from datetime import datetime
@@ -31,8 +31,8 @@ class PredictionRequest(BaseModel):
     payment_method: str = Field(..., description="Payment method used")
     age: int = Field(..., ge=0, le=120, description="Customer age")
     location: str = Field(..., description="Customer location")
-    
-    @validator('product_category')
+
+    @field_validator('product_category')
     def validate_category(cls, v):
         allowed_categories = [
             'Electronics', 'Clothing', 'Books', 'Home & Garden', 
@@ -42,14 +42,14 @@ class PredictionRequest(BaseModel):
             logger.warning(f"Unknown category: {v}, proceeding with prediction")
         return v
     
-    @validator('gender')
+    @field_validator('gender')
     def validate_gender(cls, v):
         allowed_genders = ['Male', 'Female', 'Other']
         if v not in allowed_genders:
             raise ValueError(f"Gender must be one of: {allowed_genders}")
         return v
     
-    @validator('payment_method')
+    @field_validator('payment_method')
     def validate_payment_method(cls, v):
         allowed_methods = [
             'Credit Card', 'Debit Card', 'PayPal', 
