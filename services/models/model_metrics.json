@@ -1,0 +1,643 @@
+{
+  "model_type": "RandomForestClassifier",
+  "accuracy": 0.488,
+  "features": [
+    "Product_Price",
+    "Order_Quantity",
+    "Discount_Applied",
+    "User_Age",
+    "Total_Order_Value",
+    "Order_Month",
+    "Order_Weekday",
+    "Product_Category_Books",
+    "Product_Category_Clothing",
+    "Product_Category_Electronics",
+    "Product_Category_Home",
+    "Product_Category_Toys",
+    "Payment_Method_Credit Card",
+    "Payment_Method_Debit Card",
+    "Payment_Method_Gift Card",
+    "Payment_Method_PayPal",
+    "Shipping_Method_Express",
+    "Shipping_Method_Next-Day",
+    "Shipping_Method_Standard",
+    "User_Gender_Female",
+    "User_Gender_Male",
+    "User_Location_City1",
+    "User_Location_City10",
+    "User_Location_City100",
+    "User_Location_City11",
+    "User_Location_City12",
+    "User_Location_City13",
+    "User_Location_City14",
+    "User_Location_City15",
+    "User_Location_City16",
+    "User_Location_City17",
+    "User_Location_City18",
+    "User_Location_City19",
+    "User_Location_City2",
+    "User_Location_City20",
+    "User_Location_City21",
+    "User_Location_City22",
+    "User_Location_City23",
+    "User_Location_City24",
+    "User_Location_City25",
+    "User_Location_City26",
+    "User_Location_City27",
+    "User_Location_City28",
+    "User_Location_City29",
+    "User_Location_City3",
+    "User_Location_City30",
+    "User_Location_City31",
+    "User_Location_City32",
+    "User_Location_City33",
+    "User_Location_City34",
+    "User_Location_City35",
+    "User_Location_City36",
+    "User_Location_City37",
+    "User_Location_City38",
+    "User_Location_City39",
+    "User_Location_City4",
+    "User_Location_City40",
+    "User_Location_City41",
+    "User_Location_City42",
+    "User_Location_City43",
+    "User_Location_City44",
+    "User_Location_City45",
+    "User_Location_City46",
+    "User_Location_City47",
+    "User_Location_City48",
+    "User_Location_City49",
+    "User_Location_City5",
+    "User_Location_City50",
+    "User_Location_City51",
+    "User_Location_City52",
+    "User_Location_City53",
+    "User_Location_City54",
+    "User_Location_City55",
+    "User_Location_City56",
+    "User_Location_City57",
+    "User_Location_City58",
+    "User_Location_City59",
+    "User_Location_City6",
+    "User_Location_City60",
+    "User_Location_City61",
+    "User_Location_City62",
+    "User_Location_City63",
+    "User_Location_City64",
+    "User_Location_City65",
+    "User_Location_City66",
+    "User_Location_City67",
+    "User_Location_City68",
+    "User_Location_City69",
+    "User_Location_City7",
+    "User_Location_City70",
+    "User_Location_City71",
+    "User_Location_City72",
+    "User_Location_City73",
+    "User_Location_City74",
+    "User_Location_City75",
+    "User_Location_City76",
+    "User_Location_City77",
+    "User_Location_City78",
+    "User_Location_City79",
+    "User_Location_City8",
+    "User_Location_City80",
+    "User_Location_City81",
+    "User_Location_City82",
+    "User_Location_City83",
+    "User_Location_City84",
+    "User_Location_City85",
+    "User_Location_City86",
+    "User_Location_City87",
+    "User_Location_City88",
+    "User_Location_City89",
+    "User_Location_City9",
+    "User_Location_City90",
+    "User_Location_City91",
+    "User_Location_City92",
+    "User_Location_City93",
+    "User_Location_City94",
+    "User_Location_City95",
+    "User_Location_City96",
+    "User_Location_City97",
+    "User_Location_City98",
+    "User_Location_City99"
+  ],
+  "n_features": 121,
+  "feature_importance": [
+    {
+      "feature": "Discount_Applied",
+      "importance": 0.11043213939344089
+    },
+    {
+      "feature": "Total_Order_Value",
+      "importance": 0.10185107510986917
+    },
+    {
+      "feature": "Product_Price",
+      "importance": 0.09550692865176041
+    },
+    {
+      "feature": "User_Age",
+      "importance": 0.07839134949553286
+    },
+    {
+      "feature": "Order_Month",
+      "importance": 0.056423527469813675
+    },
+    {
+      "feature": "Order_Weekday",
+      "importance": 0.051724766107897224
+    },
+    {
+      "feature": "Order_Quantity",
+      "importance": 0.03600218438881803
+    },
+    {
+      "feature": "User_Gender_Male",
+      "importance": 0.016635766803357054
+    },
+    {
+      "feature": "User_Gender_Female",
+      "importance": 0.01563478837483942
+    },
+    {
+      "feature": "Shipping_Method_Standard",
+      "importance": 0.014834684100444487
+    },
+    {
+      "feature": "Shipping_Method_Express",
+      "importance": 0.014821502617081709
+    },
+    {
+      "feature": "Payment_Method_PayPal",
+      "importance": 0.014641420939802344
+    },
+    {
+      "feature": "Shipping_Method_Next-Day",
+      "importance": 0.014378942910467752
+    },
+    {
+      "feature": "Product_Category_Books",
+      "importance": 0.014203349955881303
+    },
+    {
+      "feature": "Payment_Method_Credit Card",
+      "importance": 0.012974523199421854
+    },
+    {
+      "feature": "Product_Category_Home",
+      "importance": 0.012478240722990978
+    },
+    {
+      "feature": "Payment_Method_Debit Card",
+      "importance": 0.012468799507581625
+    },
+    {
+      "feature": "Product_Category_Clothing",
+      "importance": 0.012361247386330942
+    },
+    {
+      "feature": "Product_Category_Electronics",
+      "importance": 0.012332387059901582
+    },
+    {
+      "feature": "Payment_Method_Gift Card",
+      "importance": 0.012101421008085504
+    },
+    {
+      "feature": "Product_Category_Toys",
+      "importance": 0.011958662214014959
+    },
+    {
+      "feature": "User_Location_City32",
+      "importance": 0.006399765376102411
+    },
+    {
+      "feature": "User_Location_City25",
+      "importance": 0.006012586313802061
+    },
+    {
+      "feature": "User_Location_City38",
+      "importance": 0.00587958083761431
+    },
+    {
+      "feature": "User_Location_City45",
+      "importance": 0.005286874593183362
+    },
+    {
+      "feature": "User_Location_City7",
+      "importance": 0.005274925967583545
+    },
+    {
+      "feature": "User_Location_City44",
+      "importance": 0.005248439779836697
+    },
+    {
+      "feature": "User_Location_City68",
+      "importance": 0.005131405197016699
+    },
+    {
+      "feature": "User_Location_City18",
+      "importance": 0.004880235097879085
+    },
+    {
+      "feature": "User_Location_City1",
+      "importance": 0.0048425519389701755
+    },
+    {
+      "feature": "User_Location_City41",
+      "importance": 0.0046471499434457
+    },
+    {
+      "feature": "User_Location_City71",
+      "importance": 0.00463146511800706
+    },
+    {
+      "feature": "User_Location_City91",
+      "importance": 0.0046293400384574135
+    },
+    {
+      "feature": "User_Location_City39",
+      "importance": 0.004509887544812111
+    },
+    {
+      "feature": "User_Location_City43",
+      "importance": 0.004314776299063197
+    },
+    {
+      "feature": "User_Location_City87",
+      "importance": 0.004032407387419312
+    },
+    {
+      "feature": "User_Location_City36",
+      "importance": 0.003974497010808703
+    },
+    {
+      "feature": "User_Location_City67",
+      "importance": 0.0039048700750529803
+    },
+    {
+      "feature": "User_Location_City14",
+      "importance": 0.003841894838515786
+    },
+    {
+      "feature": "User_Location_City46",
+      "importance": 0.0037256442588833754
+    },
+    {
+      "feature": "User_Location_City17",
+      "importance": 0.0033707239730828543
+    },
+    {
+      "feature": "User_Location_City19",
+      "importance": 0.0033642225636387464
+    },
+    {
+      "feature": "User_Location_City47",
+      "importance": 0.003329024586724544
+    },
+    {
+      "feature": "User_Location_City79",
+      "importance": 0.003283693205789545
+    },
+    {
+      "feature": "User_Location_City56",
+      "importance": 0.003212103982194912
+    },
+    {
+      "feature": "User_Location_City69",
+      "importance": 0.0032049576430487063
+    },
+    {
+      "feature": "User_Location_City63",
+      "importance": 0.003186590903179977
+    },
+    {
+      "feature": "User_Location_City26",
+      "importance": 0.0031631300158859
+    },
+    {
+      "feature": "User_Location_City9",
+      "importance": 0.003138657171302257
+    },
+    {
+      "feature": "User_Location_City96",
+      "importance": 0.0031272272295329267
+    },
+    {
+      "feature": "User_Location_City16",
+      "importance": 0.0030785431358685807
+    },
+    {
+      "feature": "User_Location_City76",
+      "importance": 0.002938066089762728
+    },
+    {
+      "feature": "User_Location_City65",
+      "importance": 0.002915611076054265
+    },
+    {
+      "feature": "User_Location_City15",
+      "importance": 0.0028800336709530854
+    },
+    {
+      "feature": "User_Location_City24",
+      "importance": 0.00284788390585079
+    },
+    {
+      "feature": "User_Location_City53",
+      "importance": 0.0028461660466582548
+    },
+    {
+      "feature": "User_Location_City11",
+      "importance": 0.0028192007344127064
+    },
+    {
+      "feature": "User_Location_City13",
+      "importance": 0.0027653240470494316
+    },
+    {
+      "feature": "User_Location_City49",
+      "importance": 0.002735847032692018
+    },
+    {
+      "feature": "User_Location_City74",
+      "importance": 0.0027331661198196867
+    },
+    {
+      "feature": "User_Location_City98",
+      "importance": 0.002725068492049473
+    },
+    {
+      "feature": "User_Location_City28",
+      "importance": 0.0027010211542054224
+    },
+    {
+      "feature": "User_Location_City70",
+      "importance": 0.0026046204094268906
+    },
+    {
+      "feature": "User_Location_City73",
+      "importance": 0.0025765322493264795
+    },
+    {
+      "feature": "User_Location_City4",
+      "importance": 0.002572406356221714
+    },
+    {
+      "feature": "User_Location_City80",
+      "importance": 0.002534104779919312
+    },
+    {
+      "feature": "User_Location_City62",
+      "importance": 0.00252888421173383
+    },
+    {
+      "feature": "User_Location_City75",
+      "importance": 0.002503197174932789
+    },
+    {
+      "feature": "User_Location_City81",
+      "importance": 0.0025020988480196956
+    },
+    {
+      "feature": "User_Location_City59",
+      "importance": 0.0024299689874403424
+    },
+    {
+      "feature": "User_Location_City61",
+      "importance": 0.0024179171506871575
+    },
+    {
+      "feature": "User_Location_City94",
+      "importance": 0.0023820907428619554
+    },
+    {
+      "feature": "User_Location_City60",
+      "importance": 0.0023772127761472433
+    },
+    {
+      "feature": "User_Location_City2",
+      "importance": 0.0023655084276008004
+    },
+    {
+      "feature": "User_Location_City77",
+      "importance": 0.002335930488079379
+    },
+    {
+      "feature": "User_Location_City85",
+      "importance": 0.0023220138438772658
+    },
+    {
+      "feature": "User_Location_City10",
+      "importance": 0.0023099765204406216
+    },
+    {
+      "feature": "User_Location_City78",
+      "importance": 0.0023076631826268418
+    },
+    {
+      "feature": "User_Location_City89",
+      "importance": 0.002302740174305087
+    },
+    {
+      "feature": "User_Location_City82",
+      "importance": 0.002263896884978496
+    },
+    {
+      "feature": "User_Location_City29",
+      "importance": 0.002260762645008729
+    },
+    {
+      "feature": "User_Location_City58",
+      "importance": 0.0022544128102299655
+    },
+    {
+      "feature": "User_Location_City55",
+      "importance": 0.0022149181056008286
+    },
+    {
+      "feature": "User_Location_City51",
+      "importance": 0.0021968526322314434
+    },
+    {
+      "feature": "User_Location_City86",
+      "importance": 0.00219058831397045
+    },
+    {
+      "feature": "User_Location_City57",
+      "importance": 0.0021828745587491884
+    },
+    {
+      "feature": "User_Location_City88",
+      "importance": 0.002162984439025682
+    },
+    {
+      "feature": "User_Location_City22",
+      "importance": 0.0021156054301826894
+    },
+    {
+      "feature": "User_Location_City92",
+      "importance": 0.0021074867193729466
+    },
+    {
+      "feature": "User_Location_City52",
+      "importance": 0.002099981640223313
+    },
+    {
+      "feature": "User_Location_City37",
+      "importance": 0.002090085423407722
+    },
+    {
+      "feature": "User_Location_City48",
+      "importance": 0.0020760630114088105
+    },
+    {
+      "feature": "User_Location_City90",
+      "importance": 0.0020752806305287383
+    },
+    {
+      "feature": "User_Location_City20",
+      "importance": 0.002068134967626744
+    },
+    {
+      "feature": "User_Location_City23",
+      "importance": 0.0020552959563264156
+    },
+    {
+      "feature": "User_Location_City3",
+      "importance": 0.0020551719260758676
+    },
+    {
+      "feature": "User_Location_City93",
+      "importance": 0.002050107902276789
+    },
+    {
+      "feature": "User_Location_City100",
+      "importance": 0.0020362858871322267
+    },
+    {
+      "feature": "User_Location_City21",
+      "importance": 0.0020295897317139087
+    },
+    {
+      "feature": "User_Location_City72",
+      "importance": 0.0020189656628323144
+    },
+    {
+      "feature": "User_Location_City12",
+      "importance": 0.001962411115910981
+    },
+    {
+      "feature": "User_Location_City31",
+      "importance": 0.001882029104724047
+    },
+    {
+      "feature": "User_Location_City5",
+      "importance": 0.001870043958936393
+    },
+    {
+      "feature": "User_Location_City97",
+      "importance": 0.0018642053669380813
+    },
+    {
+      "feature": "User_Location_City33",
+      "importance": 0.0018541512756509704
+    },
+    {
+      "feature": "User_Location_City40",
+      "importance": 0.0018508425719939014
+    },
+    {
+      "feature": "User_Location_City99",
+      "importance": 0.0017711009116909311
+    },
+    {
+      "feature": "User_Location_City54",
+      "importance": 0.0017534858795470725
+    },
+    {
+      "feature": "User_Location_City6",
+      "importance": 0.0017503382307936918
+    },
+    {
+      "feature": "User_Location_City64",
+      "importance": 0.0017165347976014573
+    },
+    {
+      "feature": "User_Location_City27",
+      "importance": 0.0017102856934378843
+    },
+    {
+      "feature": "User_Location_City35",
+      "importance": 0.0016519821897507136
+    },
+    {
+      "feature": "User_Location_City34",
+      "importance": 0.0016065529767566415
+    },
+    {
+      "feature": "User_Location_City42",
+      "importance": 0.0015967072041457372
+    },
+    {
+      "feature": "User_Location_City66",
+      "importance": 0.0015557501383817213
+    },
+    {
+      "feature": "User_Location_City30",
+      "importance": 0.0015185772062222137
+    },
+    {
+      "feature": "User_Location_City84",
+      "importance": 0.0015078477640049007
+    },
+    {
+      "feature": "User_Location_City50",
+      "importance": 0.0014261912005939597
+    },
+    {
+      "feature": "User_Location_City83",
+      "importance": 0.0013368095948218567
+    },
+    {
+      "feature": "User_Location_City8",
+      "importance": 0.0011321444763993083
+    },
+    {
+      "feature": "User_Location_City95",
+      "importance": 0.0010115289256023368
+    }
+  ],
+  "sklearn_version": "1.7.2",
+  "created_date": "2025-10-01T22:47:14.206828",
+  "model_params": {
+    "bootstrap": true,
+    "ccp_alpha": 0.0,
+    "class_weight": null,
+    "criterion": "gini",
+    "max_depth": 12,
+    "max_features": "sqrt",
+    "max_leaf_nodes": null,
+    "max_samples": null,
+    "min_impurity_decrease": 0.0,
+    "min_samples_leaf": 2,
+    "min_samples_split": 5,
+    "min_weight_fraction_leaf": 0.0,
+    "monotonic_cst": null,
+    "n_estimators": 150,
+    "n_jobs": -1,
+    "oob_score": false,
+    "random_state": 42,
+    "verbose": 0,
+    "warm_start": false
+  },
+  "training_data": {
+    "n_samples": 10000,
+    "n_positive": 5052,
+    "n_negative": 4948,
+    "class_balance": 0.5052
+  }
+}

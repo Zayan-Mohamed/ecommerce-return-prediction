@@ -65,28 +65,28 @@ class ModelInferenceAgent:
         Load the trained models and metadata
         """
         try:
-            # Load primary model (return_model.pkl)
-            primary_model_path = self.models_dir / "return_model.pkl"
+                        # Load primary model (random_forest_model.pkl) - Now the primary model
+            primary_model_path = self.models_dir / "random_forest_model.pkl"
             if primary_model_path.exists() and primary_model_path.stat().st_size > 0:
                 try:
                     with open(primary_model_path, 'rb') as f:
                         self.primary_model = pickle.load(f)
                     logger.info(f"Primary model loaded from {primary_model_path}")
-                except (EOFError, pickle.UnpicklingError) as e:
-                    logger.warning(f"Primary model file corrupted or empty: {e}")
+                except Exception as e:
+                    logger.error(f"Error loading primary model: {e}")
                     self.primary_model = None
             else:
                 logger.warning(f"Primary model not found or empty at {primary_model_path}")
             
-            # Load fallback model (random_forest_model.pkl)
-            fallback_model_path = self.models_dir / "random_forest_model.pkl"
+            # Load fallback model (return_model.pkl) - Now the fallback model
+            fallback_model_path = self.models_dir / "return_model.pkl"
             if fallback_model_path.exists() and fallback_model_path.stat().st_size > 0:
                 try:
                     with open(fallback_model_path, 'rb') as f:
                         self.fallback_model = pickle.load(f)
                     logger.info(f"Fallback model loaded from {fallback_model_path}")
-                except (EOFError, pickle.UnpicklingError, ModuleNotFoundError) as e:
-                    logger.warning(f"Fallback model could not be loaded: {e}")
+                except Exception as e:
+                    logger.error(f"Error loading fallback model: {e}")
                     self.fallback_model = None
             else:
                 logger.warning(f"Fallback model not found or empty at {fallback_model_path}")
@@ -273,7 +273,7 @@ class ModelInferenceAgent:
         try:
             # Validate preprocessed data
             if not self._validate_preprocessed_data(preprocessed_features):
-                raise ValueError("Invalid preprocessed data")
+                logger.warning("Data validation failed, proceeding with available features")
             
             # Select model to use
             model = self.fallback_model if use_fallback else self.primary_model
@@ -304,11 +304,21 @@ class ModelInferenceAgent:
                 # Get binary prediction (1 if return_probability > 0.5, else 0)
                 binary_prediction = 1 if return_probability > 0.5 else 0
                 
+                # Determine risk level
+                if return_probability <= 0.3:
+                    risk_level = 'LOW'
+                elif return_probability <= 0.6:
+                    risk_level = 'MEDIUM'
+                else:
+                    risk_level = 'HIGH'
+                
                 # Create prediction result
                 result = {
+                    'success': True,
                     'prediction': {
                         'will_return': bool(binary_prediction),
                         'return_probability': float(return_probability),
+                        'risk_level': risk_level,
                         'confidence_score': float(max(probabilities)) if hasattr(model, 'predict_proba') else 0.8
                     },
                     'model_info': {
@@ -332,7 +342,16 @@ class ModelInferenceAgent:
                 
         except Exception as e:
             logger.error(f"Error in predict_single: {str(e)}")
-            raise
+            return {
+                'success': False,
+                'error': str(e),
+                'prediction': {
+                    'will_return': False,
+                    'return_probability': 0.0,
+                    'risk_level': 'UNKNOWN',
+                    'confidence_score': 0.0
+                }
+            }
     
     def predict_batch(self, preprocessed_features_list: List[pd.DataFrame]) -> List[Dict[str, Any]]:
         """
@@ -349,11 +368,18 @@ class ModelInferenceAgent:
         for i, preprocessed_features in enumerate(preprocessed_features_list):
             try:
                 result = self.predict_single(preprocessed_features)
-                results.append({
-                    'sample_id': i,
-                    'success': True,
-                    **result
-                })
+                if result.get('success', True):  # Default to True for backward compatibility
+                    results.append({
+                        'sample_id': i,
+                        'success': True,
+                        **result
+                    })
+                else:
+                    results.append({
+                        'sample_id': i,
+                        'success': False,
+                        'error': result.get('error', 'Unknown error')
+                    })
             except Exception as e:
                 logger.error(f"Error predicting sample {i}: {str(e)}")
                 results.append({

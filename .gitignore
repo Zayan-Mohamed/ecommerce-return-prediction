@@ -25,6 +25,8 @@ frontend/.vscode/*
 *.sw?
 
 *package-lock.json
+venv/
+.venv/*
 
 # Python
 __pycache__/
@@ -38,7 +40,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/

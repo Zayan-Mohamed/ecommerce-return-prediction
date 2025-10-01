@@ -240,6 +240,16 @@ class OrderProcessingAgent:
             Dictionary with processed order and features
         """
         try:
+            # Update processed count first
+            self.processed_count += 1
+            
+            # Generate order ID if not provided
+            order_id = order_data.get('order_id')
+            if not order_id:
+                # Generate a timestamp-based order ID
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                order_id = f"ORD_{timestamp}_{self.processed_count:04d}"
+            
             # Step 1: Validate order data
             is_valid, validated_data, error_msg = self.validate_order_data(order_data)
             
@@ -247,7 +257,7 @@ class OrderProcessingAgent:
                 return {
                     'success': False,
                     'error': error_msg,
-                    'order_id': order_data.get('order_id', 'unknown')
+                    'order_id': order_id
                 }
             
             # Step 2: Extract features  
@@ -256,12 +266,9 @@ class OrderProcessingAgent:
             # Step 3: Prepare for prediction
             prediction_df = self.prepare_for_prediction(features)
             
-            # Update processed count
-            self.processed_count += 1
-            
             return {
                 'success': True,
-                'order_id': order_data.get('order_id', f'processed_{self.processed_count}'),
+                'order_id': order_id,
                 'validated_data': validated_data.model_dump(),
                 'features': features,
                 'prediction_ready_data': prediction_df,
@@ -271,10 +278,12 @@ class OrderProcessingAgent:
         except Exception as e:
             error_msg = f"Error processing order: {str(e)}"
             logger.error(error_msg)
+            # Ensure we always have a valid order_id even in error cases
+            order_id = order_data.get('order_id', f'error_{datetime.now().strftime("%Y%m%d_%H%M%S")}')
             return {
                 'success': False,
                 'error': error_msg,
-                'order_id': order_data.get('order_id', 'unknown')
+                'order_id': order_id
             }
     
     def process_batch_orders(self, orders_list: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -293,9 +302,9 @@ class OrderProcessingAgent:
             failed_orders = []
             
             for i, order_data in enumerate(orders_list):
-                # Add batch index if no order_id provided
-                if 'order_id' not in order_data:
-                    order_data['order_id'] = f'batch_order_{i+1}'
+                # Ensure order has an ID (will be generated in process_single_order if not provided)
+                if 'order_id' not in order_data or not order_data['order_id']:
+                    order_data['order_id'] = f'batch_{i+1:03d}_{datetime.now().strftime("%Y%m%d_%H%M%S")}'
                 
                 result = self.process_single_order(order_data)
                 results.append(result)
