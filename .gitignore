@@ -27,6 +27,7 @@ frontend/.vscode/*
 *package-lock.json
 venv/
 .venv/*
+services/.venv
 
 # Python
 __pycache__/
