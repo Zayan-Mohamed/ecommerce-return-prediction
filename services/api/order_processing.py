@@ -142,6 +142,34 @@ async def process_single_order(
         risk_level = determine_risk_level(return_probability)
         recommendations = get_recommendations(risk_level, processing_result['features'])
         
+        # Store prediction in database
+        from utils.supabase_service import get_supabase_service
+        supabase_service = get_supabase_service()
+        
+        # Prepare prediction data for storage
+        prediction_storage_data = {
+            'order_id': processing_result['order_id'],
+            'order_value': processing_result['features'].get('Total_Order_Value', 0),
+            'return_probability': return_probability,
+            'will_return': prediction_data.get('will_return', False),
+            'confidence': return_probability,
+            'risk_level': risk_level,
+            'category': order_data.get('product_category', 'Unknown'),
+            'price': order_data.get('price', 0),
+            'quantity': order_data.get('quantity', 1),
+            'age': order_data.get('age', 0),
+            'gender': order_data.get('gender', 'Unknown'),
+            'location': order_data.get('location', 'Unknown'),
+            'payment_method': order_data.get('payment_method', 'Unknown'),
+            'shipping_method': order_data.get('shipping_method', 'Standard'),
+            'discount_applied': order_data.get('discount_applied', 0),
+            'recommendations': recommendations,
+            'timestamp': processing_result['processing_timestamp']
+        }
+        
+        # Store in Supabase
+        await supabase_service.store_prediction(prediction_storage_data)
+        
         return OrderProcessingResponse(
             success=True,
             order_id=processing_result['order_id'],

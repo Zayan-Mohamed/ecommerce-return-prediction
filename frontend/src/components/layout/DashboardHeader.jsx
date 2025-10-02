@@ -1,6 +1,7 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
+import NotificationPanel from '../dashboard/NotificationPanel'
 
 const DashboardHeader = () => {
   const navigate = useNavigate()
@@ -75,7 +76,10 @@ const DashboardHeader = () => {
           </nav>
 
           {/* User Menu */}
-          <div className="relative flex items-center">
+          <div className="relative flex items-center gap-4">
+            {/* Notification Bell */}
+            <NotificationPanel userId={user?.id} />
+            
             <button 
               onClick={toggleMobileMenu}
               className="w-11 h-11 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold hover:shadow-xl transition-all duration-300 transform hover:scale-105 ring-2 ring-white/20"

@@ -4,21 +4,41 @@ import DashboardHeader from "../components/layout/DashboardHeader";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import apiService from "../services/apiService";
+
+// Import new components
+import TabNavigation from "../components/common/TabNavigation";
+import DateRangePicker from "../components/common/DateRangePicker";
+import ExportButton from "../components/common/ExportButton";
+import BatchUploadZone from "../components/dashboard/BatchUploadZone";
+import PredictionResult from "../components/dashboard/PredictionResult";
+import RecentPredictionsTable from "../components/dashboard/RecentPredictionsTable";
+
+// Import chart components
+import RevenueImpactChart from "../components/charts/RevenueImpactChart";
+import ReturnTrendsChart from "../components/charts/ReturnTrendsChart";
+import AccuracyChart from "../components/charts/AccuracyChart";
+import RiskDistributionPie from "../components/charts/RiskDistributionPie";
+
+import {
+  ChartBarIcon,
+  CubeIcon,
+  DocumentChartBarIcon,
+  HomeIcon,
+} from "@heroicons/react/24/outline";
 
 const Dashboard = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
+  const [backendStatus, setBackendStatus] = useState("checking");
 
-  // Initialize with empty/default states instead of hardcoded data
+  // Stats state
   const [stats, setStats] = useState({
     totalOrders: 0,
     predictedReturns: 0,
@@ -27,8 +47,11 @@ const Dashboard = () => {
     accuracy: 0,
   });
 
+  // Predictions state
   const [recentPredictions, setRecentPredictions] = useState([]);
+  const [predictionResult, setPredictionResult] = useState(null);
 
+  // Quick prediction form state
   const [quickPrediction, setQuickPrediction] = useState({
     productCategory: "",
     productPrice: "",
@@ -37,40 +60,47 @@ const Dashboard = () => {
     userGender: "",
     userLocation: "",
     paymentMethod: "",
-    shippingMethod: "",
-    discountApplied: "",
+    shippingMethod: "Standard",
+    discountApplied: "0",
   });
 
-  const [predictionResult, setPredictionResult] = useState(null);
-  const [backendStatus, setBackendStatus] = useState("checking");
+  // Batch processing state
+  const [batchJobId, setBatchJobId] = useState(null);
+  const [batchStatus, setBatchStatus] = useState(null);
+  const [isProcessingBatch, setIsProcessingBatch] = useState(false);
 
+  // Analytics state
+  const [dateRange, setDateRange] = useState({ range: "last_30_days" });
+  const [analyticsData, setAnalyticsData] = useState({
+    revenue: null,
+    trends: null,
+    accuracy: null,
+    riskDist: null,
+  });
+
+  // Load dashboard analytics
   const loadAnalyticsData = useCallback(async () => {
     try {
-      // Load dashboard data from analytics API
       const dashboardData = await apiService.getDashboardData();
       if (dashboardData && dashboardData.success && dashboardData.data) {
         const kpis = dashboardData.data.kpis;
         const riskDist = dashboardData.data.risk_distribution_7d;
 
-        // Calculate total orders and return data
-        const totalRiskOrders = riskDist
-          ? (riskDist.high_risk?.count || 0) +
-            (riskDist.medium_risk?.count || 0)
-          : 0;
+        const totalRiskOrders =
+          (riskDist?.high_risk?.count || 0) +
+          (riskDist?.medium_risk?.count || 0);
 
-        const totalAllOrders = riskDist
-          ? (riskDist.high_risk?.count || 0) +
-            (riskDist.medium_risk?.count || 0) +
-            (riskDist.low_risk?.count || 0)
-          : 0;
+        const totalAllOrders =
+          (riskDist?.high_risk?.count || 0) +
+          (riskDist?.medium_risk?.count || 0) +
+          (riskDist?.low_risk?.count || 0);
 
         const returnRate =
           totalAllOrders > 0
-            ? (riskDist.high_risk?.percentage || 0) +
-              (riskDist.medium_risk?.percentage || 0)
+            ? (riskDist?.high_risk?.percentage || 0) +
+              (riskDist?.medium_risk?.percentage || 0)
             : 0;
 
-        // Update stats with real data, fallback to defaults if no data
         setStats({
           totalOrders: kpis?.total_predictions_30d || 0,
           predictedReturns: totalRiskOrders || 0,
@@ -78,48 +108,80 @@ const Dashboard = () => {
           revenueSaved: kpis?.total_revenue_saved_lifetime || 0,
           accuracy:
             kpis?.model_accuracy_latest !== "N/A"
-              ? parseFloat(kpis.model_accuracy_latest) || 0
+              ? parseFloat(kpis?.model_accuracy_latest) || 0
               : 0,
         });
-      } else {
-        console.log("No valid dashboard data received, using defaults");
+
+        // Set analytics data for charts
+        // Transform riskDist for pie chart
+        const riskDistForChart = riskDist ? [
+          { 
+            name: "Low Risk", 
+            value: riskDist.low_risk?.percentage || 0, 
+            color: "#10b981" 
+          },
+          { 
+            name: "Medium Risk", 
+            value: riskDist.medium_risk?.percentage || 0, 
+            color: "#f59e0b" 
+          },
+          { 
+            name: "High Risk", 
+            value: riskDist.high_risk?.percentage || 0, 
+            color: "#ef4444" 
+          },
+        ] : null;
+
+        setAnalyticsData((prev) => ({
+          ...prev,
+          riskDist: riskDistForChart,
+        }));
       }
     } catch (error) {
       console.error("Failed to load analytics data:", error);
-      // Keep default values if analytics fails
     }
   }, []);
 
+  // Load recent predictions from database
+  const loadRecentPredictions = useCallback(async () => {
+    try {
+      const response = await apiService.getRecentPredictions(10);
+      if (response.success && response.predictions) {
+        setRecentPredictions(response.predictions);
+      }
+    } catch (error) {
+      console.error("Failed to load recent predictions:", error);
+    }
+  }, []);
+
+  // Check backend health
   const checkBackendHealth = useCallback(async () => {
     try {
       const isAvailable = await apiService.isBackendAvailable();
       setBackendStatus(isAvailable ? "healthy" : "unhealthy");
 
       if (isAvailable) {
-        // Load analytics data when backend is healthy
         loadAnalyticsData();
+        loadRecentPredictions();
       }
     } catch (error) {
       console.error("Health check failed:", error);
       setBackendStatus("unhealthy");
     }
-  }, [loadAnalyticsData]);
+  }, [loadAnalyticsData, loadRecentPredictions]);
 
-  // Check backend health on component mount only
   useEffect(() => {
     checkBackendHealth();
   }, [checkBackendHealth]);
 
-  const handleQuickPredictionSubmit = async (e) => {
+  // Handle quick prediction
+  const handleQuickPredictionSubmit = useCallback(async (e) => {
     e.preventDefault();
     setLoading(true);
     setPredictionResult(null);
 
     try {
-      // Transform form data to API format
       const orderData = apiService.transformOrderData(quickPrediction);
-
-      // Make prediction request
       const response = await apiService.processOrder(orderData);
 
       if (response.success) {
@@ -149,45 +211,35 @@ const Dashboard = () => {
               impact: "Low",
               value: quickPrediction.userLocation,
             },
-            {
-              factor: "Payment Method",
-              impact: "Medium",
-              value: quickPrediction.paymentMethod,
-            },
           ],
         });
 
         // Add to recent predictions
         const newPrediction = {
-          id: response.order_id,
-          product: `${quickPrediction.productCategory} Item`,
+          timestamp: new Date().toISOString(),
           category: quickPrediction.productCategory,
-          price: parseFloat(quickPrediction.productPrice),
-          prediction:
-            riskLevel === "LOW"
-              ? "Low Risk"
-              : riskLevel === "MEDIUM"
-              ? "Medium Risk"
-              : "High Risk",
-          probability,
-          date: new Date().toISOString().split("T")[0],
-          status: "processed",
+          orderValue:
+            parseFloat(quickPrediction.productPrice) *
+            parseInt(quickPrediction.orderQuantity),
+          returnProbability: response.prediction.return_probability,
+          riskLevel: riskLevel,
+          status: "Completed",
         };
 
-        setRecentPredictions((prev) => [newPrediction, ...prev.slice(0, 4)]);
+        setRecentPredictions((prev) => [newPrediction, ...prev.slice(0, 9)]);
+        
+        // Reload analytics data and recent predictions to reflect the new prediction
+        await loadAnalyticsData();
+        await loadRecentPredictions();
       } else {
         throw new Error(response.error || "Prediction failed");
       }
     } catch (error) {
       console.error("Prediction failed:", error);
-      setPredictionResult({
-        error: true,
-        message: error.message || "Failed to get prediction. Please try again.",
-      });
     } finally {
       setLoading(false);
     }
-  };
+  }, [quickPrediction, loadAnalyticsData, loadRecentPredictions]);
 
   const handleInputChange = (e) => {
     setQuickPrediction({
@@ -196,740 +248,534 @@ const Dashboard = () => {
     });
   };
 
-  const [predictions, _setPredictions] = useState([]);
-
-  useEffect(() => {
-    // Update stats when predictions change
-    if (predictions.length > 0) {
-      const totalOrders = predictions.length;
-      const predictedReturns = predictions.filter(
-        (p) => p.return_probability > 0.5
-      ).length;
-      const riskOrders = predictions.filter(
-        (p) => p.return_probability > 0.7
-      ).length;
-
-      setStats({
-        totalOrders,
-        predictedReturns,
-        riskOrders,
-        accuracy: 0, // No hardcoded accuracy value
-      });
+  // Handle batch file upload
+  const handleBatchFileUpload = async (file) => {
+    setIsProcessingBatch(true);
+    try {
+      const response = await apiService.uploadBatchFile(file);
+      if (response.success) {
+        setBatchJobId(response.job_id);
+        setBatchStatus("processing");
+        // Poll for status
+        pollBatchStatus(response.job_id);
+      }
+    } catch (error) {
+      console.error("Batch upload failed:", error);
+      setBatchStatus("failed");
     }
-  }, [predictions]);
-  return (
-    <>
-      <DashboardHeader />
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 py-8">
-        <div className="max-w-full mx-auto px-6 xl:px-12 2xl:px-16">
-          {/* Header */}
-          <Card className="mb-8 bg-white/80 backdrop-blur-sm border-white/20">
-            <CardHeader className="relative overflow-hidden">
-              <div className="absolute -top-4 -right-4 w-24 h-24 bg-gradient-to-br from-indigo-200/30 to-purple-200/30 rounded-full blur-xl"></div>
-              <div className="relative z-10 flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-4xl font-bold bg-gradient-to-r from-indigo-700 via-purple-700 to-pink-700 bg-clip-text text-transparent mb-3">
-                    Welcome back,{" "}
-                    {user?.user_metadata?.full_name ||
-                      user?.email?.split("@")[0] ||
-                      "User"}
-                    !
-                  </CardTitle>
-                  <CardDescription className="text-slate-600 text-lg font-medium">
-                    Here's your return prediction overview for today
-                  </CardDescription>
-                  {/* Backend Status Indicator */}
-                  <div className="flex items-center gap-2 mt-2">
-                    <div
-                      className={`w-2 h-2 rounded-full ${
-                        backendStatus === "healthy"
-                          ? "bg-green-500"
-                          : backendStatus === "unhealthy"
-                          ? "bg-red-500"
-                          : "bg-yellow-500"
-                      }`}
-                    ></div>
-                    <span className="text-sm text-slate-500">
-                      API Status:{" "}
-                      {backendStatus === "healthy"
-                        ? "Connected"
-                        : backendStatus === "unhealthy"
-                        ? "Disconnected"
-                        : "Checking..."}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex gap-4 relative z-10">
-                  <Button variant="outline" className="flex items-center gap-3">
-                    <svg
-                      width="20"
-                      height="20"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                    </svg>
-                    Export Report
-                  </Button>
-                  <Button className="flex items-center gap-3 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700">
-                    <svg
-                      width="20"
-                      height="20"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <line x1="12" y1="5" x2="12" y2="19" />
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
-                    Add New Order
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-          </Card>
+  };
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card className="bg-white/80 backdrop-blur-sm border-white/20 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl relative overflow-hidden group">
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-yellow-600 to-amber-700"></div>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
+  // Poll batch job status
+  const pollBatchStatus = async (jobId) => {
+    const checkStatus = async () => {
+      try {
+        const response = await apiService.getBatchJobStatus(jobId);
+        setBatchStatus(response.status);
+
+        if (response.status === "completed") {
+          setIsProcessingBatch(false);
+        } else if (response.status === "processing") {
+          setTimeout(() => checkStatus(), 2000);
+        } else {
+          setIsProcessingBatch(false);
+        }
+      } catch (error) {
+        console.error("Status check failed:", error);
+        setIsProcessingBatch(false);
+      }
+    };
+    await checkStatus();
+  };
+
+  // Handle date range change for analytics
+  const handleDateRangeChange = (range) => {
+    setDateRange(range);
+    // Reload analytics with new range
+    loadAnalyticsWithRange(range);
+  };
+
+  const loadAnalyticsWithRange = async (range) => {
+    try {
+      const [revenue, trends, accuracy] = await Promise.all([
+        apiService.getRevenueImpact(range.range),
+        apiService.getReturnTrends(range.range),
+        apiService.getAccuracyAnalysis(),
+      ]);
+
+      setAnalyticsData({
+        revenue: revenue.data || null,
+        trends: trends.data || null,
+        accuracy: accuracy.data || null,
+        riskDist: analyticsData.riskDist,
+      });
+    } catch (error) {
+      console.error("Failed to load analytics:", error);
+    }
+  };
+
+  // Export predictions
+  const handleExport = async (format) => {
+    try {
+      await apiService.exportPredictions(
+        { date_range: dateRange.range },
+        format
+      );
+    } catch (error) {
+      console.error("Export failed:", error);
+    }
+  };
+
+  // Tab configuration
+  const tabs = [
+    { id: "overview", label: "Overview", icon: <HomeIcon className="h-4 w-4" /> },
+    {
+      id: "prediction",
+      label: "Single Prediction",
+      icon: <CubeIcon className="h-4 w-4" />,
+    },
+    {
+      id: "batch",
+      label: "Batch Processing",
+      icon: <DocumentChartBarIcon className="h-4 w-4" />,
+    },
+    {
+      id: "analytics",
+      label: "Analytics",
+      icon: <ChartBarIcon className="h-4 w-4" />,
+    },
+  ];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/20">
+      <DashboardHeader />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Backend Status Alert */}
+        {backendStatus === "unhealthy" && (
+          <Alert className="mb-6 glass-card border-amber-200/50 shadow-lg animate-pulse-glow">
+            <div className="flex items-start gap-3">
+              <div className="h-5 w-5 rounded-full bg-amber-500 flex items-center justify-center">
+                <span className="h-2 w-2 rounded-full bg-white animate-ping"></span>
+              </div>
+              <div>
+                <AlertTitle className="text-amber-900 font-semibold">Backend Service Unavailable</AlertTitle>
+                <AlertDescription className="text-amber-700">
+                  The prediction service is currently unavailable. Some features may not work.
+                </AlertDescription>
+              </div>
+            </div>
+          </Alert>
+        )}
+
+        {/* Enhanced Stats Cards with Gradients and Animations */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* Total Orders Card */}
+          <Card className="hover-lift glass-card border-0 shadow-lg overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <CardHeader className="pb-3 relative">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium text-gray-600">
                   Total Orders
                 </CardTitle>
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-600 to-amber-700 flex items-center justify-center text-white shadow-lg">
-                  <svg
-                    width="24"
-                    height="24"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M3 3v5h5M3.05 13a9 9 0 1 0 1.5-5.5" />
+                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
+                  <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                   </svg>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-slate-800">
-                  {stats.totalOrders.toLocaleString()}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  +12% from last month
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white/80 backdrop-blur-sm border-white/20 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl relative overflow-hidden group">
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 to-red-500"></div>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Predicted Returns
-                </CardTitle>
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center text-white shadow-lg">
-                  <svg
-                    width="24"
-                    height="24"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
-                  </svg>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-slate-800">
-                  {stats.predictedReturns}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  High risk orders
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white/80 backdrop-blur-sm border-white/20 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl relative overflow-hidden group">
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-cyan-500"></div>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Return Rate
-                </CardTitle>
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white shadow-lg">
-                  <svg
-                    width="24"
-                    height="24"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
-                  </svg>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-slate-800">
-                  {stats.returnRate}%
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Overall return rate
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white/80 backdrop-blur-sm border-white/20 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl relative overflow-hidden group">
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-green-500"></div>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Revenue Saved
-                </CardTitle>
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center text-white shadow-lg">
-                  <svg
-                    width="24"
-                    height="24"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                  </svg>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-slate-800">
-                  ${stats.revenueSaved.toLocaleString()}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  From predictions
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Main Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-            {/* Quick Prediction */}
-            <Card className="lg:col-span-2 bg-white/80 backdrop-blur-sm border-white/20">
-              <CardHeader>
-                <CardTitle className="text-2xl font-bold bg-gradient-to-r from-indigo-700 to-purple-700 bg-clip-text text-transparent">
-                  Quick Prediction
-                </CardTitle>
-                <CardDescription className="text-slate-600 font-medium">
-                  Get instant return probability for an order
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form
-                  onSubmit={handleQuickPredictionSubmit}
-                  className="space-y-6"
-                >
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Product Category
-                      </label>
-                      <select
-                        name="productCategory"
-                        value={quickPrediction.productCategory}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-                        required
-                      >
-                        <option value="">Select category</option>
-                        <option value="Electronics">Electronics</option>
-                        <option value="Clothing">Clothing</option>
-                        <option value="Sports">Sports</option>
-                        <option value="Home">Home & Garden</option>
-                        <option value="Books">Books</option>
-                        <option value="Beauty">Beauty</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Product Price ($)
-                      </label>
-                      <input
-                        type="number"
-                        name="productPrice"
-                        value={quickPrediction.productPrice}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-                        placeholder="0.00"
-                        step="0.01"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Order Quantity
-                      </label>
-                      <input
-                        type="number"
-                        name="orderQuantity"
-                        value={quickPrediction.orderQuantity}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-                        placeholder="1"
-                        min="1"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        User Age
-                      </label>
-                      <input
-                        type="number"
-                        name="userAge"
-                        value={quickPrediction.userAge}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-                        placeholder="25"
-                        min="18"
-                        max="100"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        User Gender
-                      </label>
-                      <select
-                        name="userGender"
-                        value={quickPrediction.userGender}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-                        required
-                      >
-                        <option value="">Select gender</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        User Location
-                      </label>
-                      <select
-                        name="userLocation"
-                        value={quickPrediction.userLocation}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-                        required
-                      >
-                        <option value="">Select location</option>
-                        <option value="Urban">Urban</option>
-                        <option value="Suburban">Suburban</option>
-                        <option value="Rural">Rural</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Payment Method
-                      </label>
-                      <select
-                        name="paymentMethod"
-                        value={quickPrediction.paymentMethod}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-                        required
-                      >
-                        <option value="">Select payment</option>
-                        <option value="Credit Card">Credit Card</option>
-                        <option value="Debit Card">Debit Card</option>
-                        <option value="PayPal">PayPal</option>
-                        <option value="Cash on Delivery">
-                          Cash on Delivery
-                        </option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Shipping Method
-                      </label>
-                      <select
-                        name="shippingMethod"
-                        value={quickPrediction.shippingMethod}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-                        required
-                      >
-                        <option value="">Select shipping</option>
-                        <option value="Standard">Standard</option>
-                        <option value="Express">Express</option>
-                        <option value="Next Day">Next Day</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Discount Applied (%)
-                    </label>
-                    <input
-                      type="number"
-                      name="discountApplied"
-                      value={quickPrediction.discountApplied}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-                      placeholder="0"
-                      min="0"
-                      max="100"
-                      step="0.1"
-                      required
-                    />
-                  </div>
-
-                  <Button
-                    type="submit"
-                    className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                        Analyzing...
-                      </>
-                    ) : (
-                      <>
-                        <svg
-                          width="20"
-                          height="20"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          className="mr-2"
-                        >
-                          <path d="M9 19c-5 0-8-3-8-6s3-6 8-6c1.25 0 2.45.21 3.58.58A5 5 0 0 1 16 6c2.76 0 5 2.24 5 5s-2.24 5-5 5c-1.38 0-2.63-.56-3.54-1.46A13.85 13.85 0 0 1 9 19z" />
-                        </svg>
-                        Predict Return Risk
-                      </>
-                    )}
-                  </Button>
-                </form>
-
-                {predictionResult && (
-                  <div className="mt-8">
-                    {predictionResult.error ? (
-                      <Alert variant="destructive">
-                        <AlertTitle>Prediction Failed</AlertTitle>
-                        <AlertDescription>
-                          {predictionResult.message}
-                        </AlertDescription>
-                      </Alert>
-                    ) : (
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="text-lg font-bold text-gray-800">
-                            Prediction Result
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                          <div className="flex items-center justify-center">
-                            <Badge
-                              variant={
-                                predictionResult.riskLevel === "HIGH"
-                                  ? "danger"
-                                  : predictionResult.riskLevel === "MEDIUM"
-                                  ? "warning"
-                                  : "success"
-                              }
-                              className="text-sm font-semibold"
-                            >
-                              {predictionResult.riskLevel === "HIGH"
-                                ? "High Risk"
-                                : predictionResult.riskLevel === "MEDIUM"
-                                ? "Medium Risk"
-                                : "Low Risk"}
-                            </Badge>
-                            <div className="ml-8 relative">
-                              <svg width="80" height="80" viewBox="0 0 80 80">
-                                <circle
-                                  cx="40"
-                                  cy="40"
-                                  r="35"
-                                  fill="none"
-                                  stroke="#e2e8f0"
-                                  strokeWidth="8"
-                                />
-                                <circle
-                                  cx="40"
-                                  cy="40"
-                                  r="35"
-                                  fill="none"
-                                  stroke={
-                                    predictionResult.riskLevel === "HIGH"
-                                      ? "#e53e3e"
-                                      : predictionResult.riskLevel === "MEDIUM"
-                                      ? "#ed8936"
-                                      : "#38a169"
-                                  }
-                                  strokeWidth="8"
-                                  strokeDasharray={`${
-                                    predictionResult.probability * 2.2
-                                  } 220`}
-                                  strokeDashoffset="0"
-                                  transform="rotate(-90 40 40)"
-                                  className="transition-all duration-500"
-                                />
-                              </svg>
-                              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
-                                <span className="block text-xl font-bold text-gray-800">
-                                  {predictionResult.probability}%
-                                </span>
-                                <span className="text-sm text-gray-600">
-                                  Return Risk
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="text-center">
-                            <Progress
-                              value={predictionResult.confidence}
-                              className="w-full h-2"
-                            />
-                            <div className="text-sm text-gray-600 mt-2">
-                              Confidence: {predictionResult.confidence}%
-                            </div>
-                          </div>
-
-                          <div>
-                            <h4 className="text-sm font-semibold text-gray-800 mb-3">
-                              Key Factors
-                            </h4>
-                            <div className="space-y-3">
-                              {predictionResult.factors.map((factor, index) => (
-                                <Card key={index} className="p-3">
-                                  <div className="flex items-center justify-between">
-                                    <div>
-                                      <span className="text-sm font-medium text-gray-800">
-                                        {factor.factor}
-                                      </span>
-                                      <span className="text-sm text-gray-600 ml-2">
-                                        {factor.value}
-                                      </span>
-                                    </div>
-                                    <Badge
-                                      variant={
-                                        factor.impact === "High"
-                                          ? "danger"
-                                          : factor.impact === "Medium"
-                                          ? "warning"
-                                          : "success"
-                                      }
-                                      className="text-xs"
-                                    >
-                                      {factor.impact}
-                                    </Badge>
-                                  </div>
-                                </Card>
-                              ))}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Recent Predictions */}
-            <Card className="bg-white/80 backdrop-blur-sm border-white/20">
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle className="text-xl font-bold bg-gradient-to-r from-purple-700 to-pink-700 bg-clip-text text-transparent">
-                    Recent Predictions
-                  </CardTitle>
-                  <Button variant="outline" size="sm">
-                    View All
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-5 gap-4 py-3 px-4 bg-gray-50 rounded-lg text-sm font-medium text-gray-700">
-                    <div>Order ID</div>
-                    <div>Product</div>
-                    <div>Prediction</div>
-                    <div>Risk %</div>
-                    <div>Status</div>
-                  </div>
-                  <div className="space-y-2">
-                    {recentPredictions.length === 0 ? (
-                      <div className="text-center py-8 text-gray-500">
-                        No predictions yet. Make your first prediction above!
-                      </div>
-                    ) : (
-                      recentPredictions.map((prediction) => (
-                        <div
-                          key={prediction.id}
-                          className="grid grid-cols-5 gap-4 py-4 px-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200"
-                        >
-                          <div className="flex flex-col">
-                            <span className="text-sm font-medium text-gray-800">
-                              {prediction.id}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              {prediction.date}
-                            </span>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-sm font-medium text-gray-800">
-                              {prediction.product}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              {prediction.category}
-                            </span>
-                          </div>
-                          <div>
-                            <Badge
-                              variant={
-                                prediction.prediction === "High Risk"
-                                  ? "danger"
-                                  : prediction.prediction === "Medium Risk"
-                                  ? "warning"
-                                  : "success"
-                              }
-                            >
-                              {prediction.prediction}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Progress
-                              value={prediction.probability}
-                              className="flex-1 h-2"
-                            />
-                            <span className="text-sm font-medium text-gray-600">
-                              {prediction.probability}%
-                            </span>
-                          </div>
-                          <div>
-                            <Badge
-                              variant={
-                                prediction.status === "processed"
-                                  ? "success"
-                                  : "default"
-                              }
-                            >
-                              {prediction.status === "processed"
-                                ? "Processed"
-                                : "Processing"}
-                            </Badge>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Performance Overview */}
-          <Card className="bg-white/80 backdrop-blur-sm border-white/20">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xl font-bold text-gray-800">
-                  Model Performance
-                </CardTitle>
-                <div className="flex gap-6">
-                  <div className="text-center">
-                    <span className="block text-sm text-gray-500">
-                      Accuracy
-                    </span>
-                    <span className="text-lg font-bold text-blue-600">
-                      {stats.accuracy}%
-                    </span>
-                  </div>
-                  <div className="text-center">
-                    <span className="block text-sm text-gray-500">
-                      Predictions Today
-                    </span>
-                    <span className="text-lg font-bold text-green-600">
-                      {stats.totalOrders || 0}
-                    </span>
-                  </div>
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="p-4 bg-gray-50 rounded-xl">
-                <div className="flex items-end justify-center gap-2 h-40 mb-4">
-                  <div className="flex flex-col items-center">
-                    <div
-                      className="bg-blue-500 w-8 rounded-t-sm mb-2"
-                      style={{ height: "60%" }}
-                    ></div>
-                    <span className="text-xs text-gray-600">Mon</span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <div
-                      className="bg-blue-500 w-8 rounded-t-sm mb-2"
-                      style={{ height: "80%" }}
-                    ></div>
-                    <span className="text-xs text-gray-600">Tue</span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <div
-                      className="bg-blue-500 w-8 rounded-t-sm mb-2"
-                      style={{ height: "45%" }}
-                    ></div>
-                    <span className="text-xs text-gray-600">Wed</span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <div
-                      className="bg-blue-500 w-8 rounded-t-sm mb-2"
-                      style={{ height: "90%" }}
-                    ></div>
-                    <span className="text-xs text-gray-600">Thu</span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <div
-                      className="bg-blue-500 w-8 rounded-t-sm mb-2"
-                      style={{ height: "70%" }}
-                    ></div>
-                    <span className="text-xs text-gray-600">Fri</span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <div
-                      className="bg-blue-500 w-8 rounded-t-sm mb-2"
-                      style={{ height: "85%" }}
-                    ></div>
-                    <span className="text-xs text-gray-600">Sat</span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <div
-                      className="bg-blue-500 w-8 rounded-t-sm mb-2"
-                      style={{ height: "65%" }}
-                    ></div>
-                    <span className="text-xs text-gray-600">Sun</span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-center">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-blue-500 rounded-sm"></div>
-                    <span className="text-sm text-gray-600">
-                      Daily Predictions
-                    </span>
-                  </div>
+            <CardContent className="relative">
+              <div className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                {stats.totalOrders}
+              </div>
+              <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                <span className="inline-block h-1 w-1 rounded-full bg-green-500"></span>
+                Last 30 days
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Predicted Returns Card */}
+          <Card className="hover-lift glass-card border-0 shadow-lg overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 via-transparent to-orange-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <CardHeader className="pb-3 relative">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium text-gray-600">
+                  Predicted Returns
+                </CardTitle>
+                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-red-500 to-orange-600 flex items-center justify-center shadow-lg">
+                  <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
                 </div>
               </div>
+            </CardHeader>
+            <CardContent className="relative">
+              <div className="text-4xl font-bold bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent">
+                {stats.predictedReturns}
+              </div>
+              <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                <span className="inline-block h-1 w-1 rounded-full bg-red-500"></span>
+                High/Medium risk
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Return Rate Card */}
+          <Card className="hover-lift glass-card border-0 shadow-lg overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 via-transparent to-yellow-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <CardHeader className="pb-3 relative">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium text-gray-600">
+                  Return Rate
+                </CardTitle>
+                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-amber-500 to-yellow-600 flex items-center justify-center shadow-lg">
+                  <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="relative">
+              <div className="text-4xl font-bold bg-gradient-to-r from-amber-600 to-yellow-600 bg-clip-text text-transparent">
+                {stats.returnRate.toFixed(1)}%
+              </div>
+              <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                <span className="inline-block h-1 w-1 rounded-full bg-amber-500"></span>
+                Current period
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Revenue Saved Card */}
+          <Card className="hover-lift glass-card border-0 shadow-lg overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <CardHeader className="pb-3 relative">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium text-gray-600">
+                  Revenue Saved
+                </CardTitle>
+                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
+                  <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="relative">
+              <div className="text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                ${stats.revenueSaved.toLocaleString()}
+              </div>
+              <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                <span className="inline-block h-1 w-1 rounded-full bg-green-500"></span>
+                Lifetime total
+              </p>
             </CardContent>
           </Card>
         </div>
+
+        {/* Tab Navigation */}
+        <TabNavigation
+          tabs={tabs}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          className="mb-6"
+        />
+
+        {/* Tab Content */}
+        <div className="space-y-6">
+          {/* Overview Tab */}
+          {activeTab === "overview" && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Dashboard Overview
+                </h2>
+                <ExportButton
+                  data={recentPredictions}
+                  filename="predictions"
+                />
+              </div>
+
+              {recentPredictions.length > 0 ? (
+                <RecentPredictionsTable
+                  predictions={recentPredictions}
+                  onRowClick={(row) => console.log("Clicked:", row)}
+                />
+              ) : (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <p className="text-gray-500">
+                      No predictions yet. Start by making a single prediction or
+                      uploading a batch file.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {/* Single Prediction Tab */}
+          {activeTab === "prediction" && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Quick Order Prediction</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <form
+                    onSubmit={handleQuickPredictionSubmit}
+                    className="space-y-4"
+                  >
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Product Category
+                        </label>
+                        <select
+                          name="productCategory"
+                          value={quickPrediction.productCategory}
+                          onChange={handleInputChange}
+                          required
+                          className="w-full px-3 py-2 border rounded-md"
+                        >
+                          <option value="">Select category</option>
+                          <option value="Electronics">Electronics</option>
+                          <option value="Clothing">Clothing</option>
+                          <option value="Books">Books</option>
+                          <option value="Home">Home</option>
+                          <option value="Sports">Sports</option>
+                          <option value="Beauty">Beauty</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Product Price ($)
+                        </label>
+                        <input
+                          type="number"
+                          name="productPrice"
+                          value={quickPrediction.productPrice}
+                          onChange={handleInputChange}
+                          required
+                          min="0"
+                          step="0.01"
+                          className="w-full px-3 py-2 border rounded-md"
+                          placeholder="99.99"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Order Quantity
+                        </label>
+                        <input
+                          type="number"
+                          name="orderQuantity"
+                          value={quickPrediction.orderQuantity}
+                          onChange={handleInputChange}
+                          required
+                          min="1"
+                          className="w-full px-3 py-2 border rounded-md"
+                          placeholder="1"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Customer Age
+                        </label>
+                        <input
+                          type="number"
+                          name="userAge"
+                          value={quickPrediction.userAge}
+                          onChange={handleInputChange}
+                          required
+                          min="18"
+                          max="100"
+                          className="w-full px-3 py-2 border rounded-md"
+                          placeholder="25"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Customer Gender
+                        </label>
+                        <select
+                          name="userGender"
+                          value={quickPrediction.userGender}
+                          onChange={handleInputChange}
+                          required
+                          className="w-full px-3 py-2 border rounded-md"
+                        >
+                          <option value="">Select gender</option>
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Location
+                        </label>
+                        <select
+                          name="userLocation"
+                          value={quickPrediction.userLocation}
+                          onChange={handleInputChange}
+                          required
+                          className="w-full px-3 py-2 border rounded-md"
+                        >
+                          <option value="">Select location</option>
+                          <option value="Urban">Urban</option>
+                          <option value="Suburban">Suburban</option>
+                          <option value="Rural">Rural</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Payment Method
+                        </label>
+                        <select
+                          name="paymentMethod"
+                          value={quickPrediction.paymentMethod}
+                          onChange={handleInputChange}
+                          required
+                          className="w-full px-3 py-2 border rounded-md"
+                        >
+                          <option value="">Select method</option>
+                          <option value="Credit Card">Credit Card</option>
+                          <option value="Debit Card">Debit Card</option>
+                          <option value="PayPal">PayPal</option>
+                          <option value="Bank Transfer">Bank Transfer</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Shipping Method
+                        </label>
+                        <select
+                          name="shippingMethod"
+                          value={quickPrediction.shippingMethod}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border rounded-md"
+                        >
+                          <option value="Standard">Standard</option>
+                          <option value="Express">Express</option>
+                          <option value="Next-Day">Next-Day</option>
+                        </select>
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium mb-1">
+                          Discount Applied (%)
+                        </label>
+                        <input
+                          type="number"
+                          name="discountApplied"
+                          value={quickPrediction.discountApplied}
+                          onChange={handleInputChange}
+                          min="0"
+                          max="100"
+                          className="w-full px-3 py-2 border rounded-md"
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+
+                    <Button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full"
+                    >
+                      {loading ? "Predicting..." : "Get Prediction"}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+
+              <div>
+                {predictionResult && (
+                  <PredictionResult result={predictionResult} />
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Batch Processing Tab */}
+          {activeTab === "batch" && (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Batch Order Processing</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <BatchUploadZone
+                    onFileUpload={handleBatchFileUpload}
+                    isProcessing={isProcessingBatch}
+                  />
+
+                  {batchStatus && (
+                    <div className="mt-6">
+                      <Alert>
+                        <AlertTitle>Batch Processing Status</AlertTitle>
+                        <AlertDescription>
+                          Status: {batchStatus}
+                          {batchStatus === "completed" && batchJobId && (
+                            <div className="mt-2">
+                              <Button
+                                onClick={() =>
+                                  apiService.downloadBatchResults(batchJobId)
+                                }
+                              >
+                                Download Results
+                              </Button>
+                            </div>
+                          )}
+                        </AlertDescription>
+                      </Alert>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Analytics Tab */}
+          {activeTab === "analytics" && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <h2 className="text-2xl font-bold">Business Analytics</h2>
+                <DateRangePicker
+                  onDateChange={handleDateRangeChange}
+                  defaultRange={dateRange.range}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Wrap each chart in error boundary */}
+                <div>
+                  <RevenueImpactChart data={analyticsData.revenue} />
+                </div>
+                <div>
+                  <ReturnTrendsChart data={analyticsData.trends} />
+                </div>
+                <div>
+                  <AccuracyChart data={analyticsData.accuracy} />
+                </div>
+                <div>
+                  <RiskDistributionPie data={analyticsData.riskDist} />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </>
+    </div>
   );
 };
 

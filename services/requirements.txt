@@ -10,3 +10,7 @@ scikit-learn
 
 # Data Validation
 pydantic
+
+# Database
+supabase
+python-dotenv

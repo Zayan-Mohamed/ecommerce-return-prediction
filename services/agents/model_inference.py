@@ -176,43 +176,17 @@ class ModelInferenceAgent:
     
     def _adjust_probability_to_target_range(self, raw_probability: float, features_df: pd.DataFrame) -> float:
         """
-        Adjust prediction probability to target range of 65-75%
+        Returns the raw model probability without adjustment.
+        Allows the model to naturally produce low, medium, and high risk predictions.
         
         Args:
             raw_probability: Original model probability
-            features_df: Input features for additional context
+            features_df: Input features (not used)
             
         Returns:
-            Adjusted probability in 65-75% range
+            Unadjusted probability from the model
         """
-        try:
-            # Extract key features for adjustment
-            row = features_df.iloc[0]
-            price = row.get('Product_Price', 100)
-            age = row.get('User_Age', 30)
-            category = row.get('Product_Category', 1)
-            quantity = row.get('Order_Quantity', 1)
-            
-            # Base probability in target range
-            base_prob = 0.68  # Start at 68% (middle of 65-75%)
-            
-            # Adjustment factors
-            price_adjustment = (price - 200) / 1000 * 0.05  # ±5% based on price deviation from $200
-            age_adjustment = (35 - age) / 100 * 0.03  # ±3% based on age (younger = higher return rate)
-            category_adjustment = 0.02 if category == 1 else 0  # +2% for Electronics
-            quantity_adjustment = min(0.02, (quantity - 1) * 0.01)  # +1% per additional item, max 2%
-            
-            # Calculate final probability
-            adjusted_prob = base_prob + price_adjustment + age_adjustment + category_adjustment + quantity_adjustment
-            
-            # Ensure it stays within 65-75% range
-            final_prob = max(0.65, min(0.75, adjusted_prob))
-            
-            return final_prob
-            
-        except Exception as e:
-            logger.warning(f"Error adjusting probability, using default: {str(e)}")
-            return 0.70  # Default to 70% if adjustment fails
+        return raw_probability
     
     def _validate_preprocessed_data(self, feature_df: pd.DataFrame) -> bool:
         """

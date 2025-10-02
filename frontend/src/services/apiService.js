@@ -207,6 +207,60 @@ class ApiService {
   async getAnalyticsHealth() {
     return await this.makeRequest("/api/analytics/health");
   }
+
+  async getRecentPredictions(limit = 10) {
+    return await this.makeRequest(`/api/analytics/recent-predictions?limit=${limit}`);
+  }
+
+  // Export functionality
+  async exportPredictions(filters = {}, format = "csv") {
+    const queryParams = new URLSearchParams({
+      format,
+      ...filters,
+    }).toString();
+    
+    const url = `${this.baseUrl}/api/export/predictions?${queryParams}`;
+    
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = `predictions_export.${format}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+      
+      return true;
+    } catch (error) {
+      console.error("Export failed:", error);
+      throw error;
+    }
+  }
+
+  // Notification methods
+  async getNotifications(userId) {
+    return await this.makeRequest(`/api/notifications?user_id=${userId}`);
+  }
+
+  async markNotificationRead(notificationId) {
+    return await this.makeRequest(`/api/notifications/${notificationId}/read`, {
+      method: "POST",
+    });
+  }
+
+  async markAllNotificationsRead(userId) {
+    return await this.makeRequest(`/api/notifications/read-all`, {
+      method: "POST",
+      body: JSON.stringify({ user_id: userId }),
+    });
+  }
 }
 
 // Create and export singleton instance

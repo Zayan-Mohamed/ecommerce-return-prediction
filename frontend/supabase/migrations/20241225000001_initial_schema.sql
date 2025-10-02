@@ -34,7 +34,10 @@ CREATE POLICY "Users can insert own profile" ON public.profiles
 -- Create predictions table
 CREATE TABLE public.predictions (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,  -- Nullable for anonymous predictions
+    
+    -- Order identification
+    order_id VARCHAR(255),
     
     -- Input features
     product_category INTEGER,
@@ -52,11 +55,23 @@ CREATE TABLE public.predictions (
     order_weekday INTEGER,
     user_location_num INTEGER,
     
+    -- Human-readable fields for analytics
+    risk_level VARCHAR(20),
+    category_name VARCHAR(100),
+    customer_gender VARCHAR(20),
+    customer_location VARCHAR(50),
+    customer_age INTEGER,
+    payment_method_name VARCHAR(50),
+    shipping_method_name VARCHAR(50),
+    price DECIMAL(10,2),
+    quantity INTEGER,
+    
     -- Prediction results
     predicted_return_probability DECIMAL(5,4),
     predicted_return_flag BOOLEAN,
     confidence_score DECIMAL(5,4),
     model_version VARCHAR(50) DEFAULT 'v1.0',
+    recommendations JSONB,  -- Business recommendations as JSON array
     
     -- Metadata
     status prediction_status DEFAULT 'pending',
@@ -65,6 +80,10 @@ CREATE TABLE public.predictions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Add comment explaining nullable user_id
+COMMENT ON COLUMN public.predictions.user_id IS 'User ID - nullable for anonymous/system predictions';
+COMMENT ON TABLE public.predictions IS 'Stores all return predictions with input features and results';
 
 -- Enable RLS on predictions
 ALTER TABLE public.predictions ENABLE ROW LEVEL SECURITY;
@@ -130,6 +149,8 @@ CREATE TABLE public.model_metrics (
 CREATE INDEX idx_predictions_user_id ON public.predictions(user_id);
 CREATE INDEX idx_predictions_created_at ON public.predictions(created_at);
 CREATE INDEX idx_predictions_status ON public.predictions(status);
+CREATE INDEX idx_predictions_risk_level ON public.predictions(risk_level);
+CREATE INDEX idx_predictions_order_id ON public.predictions(order_id);
 CREATE INDEX idx_datasets_user_id ON public.datasets(user_id);
 CREATE INDEX idx_profiles_email ON public.profiles(email);
 

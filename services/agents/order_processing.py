@@ -201,13 +201,11 @@ class OrderProcessingAgent:
             DataFrame ready for ModelInferenceAgent
         """
         try:
-            # Create DataFrame with features in the exact order expected by the model
-            # Based on the model's health check, this is the expected order and format
+            # Create DataFrame with base features
             ordered_features = {
                 'Product_Category': features['Product_Category'],
                 'Product_Price': features['Product_Price'],
                 'Order_Quantity': features['Order_Quantity'],
-                'Return_Reason': features['Return_Reason'],
                 'User_Age': features['User_Age'],
                 'User_Gender': features['User_Gender'],
                 'Payment_Method': features['Payment_Method'],
@@ -219,6 +217,31 @@ class OrderProcessingAgent:
                 'Order_Weekday': features['Order_Weekday'],
                 'User_Location_Num': features['User_Location_Num']
             }
+            
+            # Add engineered features to match the trained model
+            # Return_Risk_Score: Simplified risk indicator (0=low, 1=medium, 2=high)
+            # Based on price and age as proxies for return risk
+            price = features['Product_Price']
+            age = features['User_Age']
+            if price > 200 or age < 25:
+                ordered_features['Return_Risk_Score'] = 2  # High risk
+            elif price > 100 or age < 35:
+                ordered_features['Return_Risk_Score'] = 1  # Medium risk
+            else:
+                ordered_features['Return_Risk_Score'] = 0  # Low risk
+            
+            # Price_Per_Item: Price divided by quantity
+            ordered_features['Price_Per_Item'] = features['Product_Price'] / (features['Order_Quantity'] + 0.01)
+            
+            # High_Discount: 1 if discount > 20%, else 0
+            ordered_features['High_Discount'] = 1 if features['Discount_Applied'] > 20 else 0
+            
+            # Young: 1 if age < 30, else 0 (match trained model feature name)
+            ordered_features['Young'] = 1 if features['User_Age'] < 30 else 0
+            
+            # High_Value: 1 if total value > median (~150), else 0 (match trained model feature name)
+            # Using 150 as approximate median from training data
+            ordered_features['High_Value'] = 1 if features['Total_Order_Value'] > 150 else 0
             
             # Convert to DataFrame (single row)
             df = pd.DataFrame([ordered_features])
