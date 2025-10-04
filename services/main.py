@@ -53,6 +53,7 @@ app.add_middleware(
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
         "https://*.vercel.app",  # Vercel deployments
+        "https://ecommerce-return-prediction.vercel.app",  # Specific Vercel domain
         "https://*.netlify.app"  # Netlify deployments
     ],
     allow_credentials=True,
