@@ -7,21 +7,31 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 import uvicorn
-from api.prediction import router as prediction_router
-from api.order_processing import router as order_processing_router
-from api.analytics import router as analytics_router
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Create FastAPI app
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    logger.info("🚀 Starting E-commerce Return Prediction API...")
+    include_routers()
+    logger.info("✅ API startup complete!")
+    yield
+    # Shutdown
+    logger.info("🛑 Shutting down API...")
+
+# Create FastAPI app with lifespan
 app = FastAPI(
     title="E-commerce Return Prediction API",
     description="AI-powered return prediction service for e-commerce orders",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan
 )
 
 # Add CORS middleware
@@ -50,10 +60,46 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(prediction_router)
-app.include_router(order_processing_router)
-app.include_router(analytics_router)
+# Lazy load routers to avoid loading models during startup
+def include_routers():
+    """Include routers after app startup to avoid model loading during initialization"""
+    routers_loaded = 0
+    
+    try:
+        from api.prediction import router as prediction_router
+        app.include_router(prediction_router)
+        logger.info("✅ Prediction router loaded")
+        routers_loaded += 1
+    except Exception as e:
+        logger.warning(f"⚠️ Failed to load prediction router: {str(e)}")
+    
+    try:
+        from api.order_processing import router as order_processing_router
+        app.include_router(order_processing_router)
+        logger.info("✅ Order processing router loaded")
+        routers_loaded += 1
+    except Exception as e:
+        logger.warning(f"⚠️ Failed to load order processing router: {str(e)}")
+    
+    try:
+        from api.analytics import router as analytics_router
+        app.include_router(analytics_router)
+        logger.info("✅ Analytics router loaded")
+        routers_loaded += 1
+    except Exception as e:
+        logger.warning(f"⚠️ Failed to load analytics router: {str(e)}")
+    
+    # If no routers loaded successfully, use minimal fallback
+    if routers_loaded == 0:
+        logger.warning("🔄 Loading minimal fallback router...")
+        try:
+            from api.minimal import router as minimal_router
+            app.include_router(minimal_router)
+            logger.info("✅ Minimal fallback router loaded")
+        except Exception as e:
+            logger.error(f"❌ Failed to load minimal router: {str(e)}")
+    
+    logger.info(f"📊 Loaded {routers_loaded}/3 full routers")
 
 @app.get("/")
 def root():
@@ -102,7 +148,20 @@ def root():
 
 @app.get("/health")
 def health_check():
-    """General health check endpoint"""
+    """General health check endpoint - lightweight version for Railway"""
+    import time
+    
+    return {
+        "status": "healthy",
+        "service": "return-prediction-api",
+        "version": "1.0.0",
+        "timestamp": int(time.time()),
+        "message": "Service is running"
+    }
+
+@app.get("/health/detailed")
+def detailed_health_check():
+    """Detailed health check endpoint with agent status"""
     try:
         # Test basic imports and agent availability
         from agents.model_inference import get_inference_agent
