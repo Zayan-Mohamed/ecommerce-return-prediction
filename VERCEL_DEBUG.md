@@ -3,11 +3,13 @@
 ## Latest Issue: FastAPI Auto-Detection ❌
 
 ### Error Message:
+
 ```
 Error: No FastAPI entrypoint found. Searched for: app.py, src/app.py, app/app.py, index.py, src/index.py, app/index.py, server.py, src/server.py, app/server.py, main.py, src/main.py, app/main.py
 ```
 
 ### Root Cause:
+
 Vercel is auto-detecting the Python backend files and trying to deploy them as a FastAPI app instead of deploying the frontend.
 
 ### Solution Applied ✅
@@ -20,6 +22,7 @@ Vercel is auto-detecting the Python backend files and trying to deploy them as a
 ### Files Modified:
 
 **`.vercelignore`** (NEW):
+
 ```
 services/
 *.py
@@ -31,6 +34,7 @@ requirements.txt
 ```
 
 **`vercel.json`** (UPDATED):
+
 ```json
 {
   "buildCommand": "cd frontend && npm ci && npm run build",
@@ -41,6 +45,7 @@ requirements.txt
 ```
 
 **`package.json`** (UPDATED):
+
 ```json
 {
   "name": "ecommerce-return-prediction-frontend",
@@ -72,6 +77,7 @@ requirements.txt
 ## Deployment Strategy 🚀
 
 ### What Should Happen Now:
+
 1. **Vercel ignores Python files** due to `.vercelignore`
 2. **Recognizes Node.js project** from `package.json`
 3. **Builds frontend only** using explicit commands

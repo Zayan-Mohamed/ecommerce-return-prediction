@@ -1,10 +1,11 @@
 # Ignore entire Python backend - this is frontend only
+
 services/
-*.py
-*.pyc
-*.pyo
-*.pyd
-__pycache__/
+_.py
+_.pyc
+_.pyo
+_.pyd
+**pycache**/
 .Python
 env/
 venv/
@@ -16,24 +17,27 @@ pip-log.txt
 .mypy_cache
 
 # Ignore backend deployment files
+
 Dockerfile
 railway.toml
 requirements.txt
 startup.py
 start.sh
 
-# Ignore documentation and other files
-*.md
-!README.md
-RAILWAY_FIX.md
-ARCHITECTURE_CHANGES.md
-VERCEL_DEBUG.md
-DEPLOYMENT.md
-B2B-ECOMMERCE-RETURN-PREDICTION-DEVELOPMENT-PLAN.md
-CLEANUP_SUMMARY.md
+# Ignore documentation files (but not all .md files in frontend)
 
-# Keep only essential frontend files
+/RAILWAY_FIX.md
+/ARCHITECTURE_CHANGES.md
+/VERCEL_DEBUG.md
+/DEPLOYMENT.md
+/B2B-ECOMMERCE-RETURN-PREDICTION-DEVELOPMENT-PLAN.md
+/CLEANUP_SUMMARY.md
+/README.vercel.md
+
+# Keep frontend and essential files - everything else should be included by default
+
 !frontend/
 !package.json
 !vercel.json
 !.vercelignore
+!README.md
