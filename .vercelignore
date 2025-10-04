@@ -1,0 +1,39 @@
+# Ignore entire Python backend - this is frontend only
+services/
+*.py
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+.tox/
+.coverage
+.pytest_cache/
+.mypy_cache
+
+# Ignore backend deployment files
+Dockerfile
+railway.toml
+requirements.txt
+startup.py
+start.sh
+
+# Ignore documentation and other files
+*.md
+!README.md
+RAILWAY_FIX.md
+ARCHITECTURE_CHANGES.md
+VERCEL_DEBUG.md
+DEPLOYMENT.md
+B2B-ECOMMERCE-RETURN-PREDICTION-DEVELOPMENT-PLAN.md
+CLEANUP_SUMMARY.md
+
+# Keep only essential frontend files
+!frontend/
+!package.json
+!vercel.json
+!.vercelignore
