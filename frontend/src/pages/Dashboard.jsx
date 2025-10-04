@@ -151,8 +151,10 @@ const Dashboard = () => {
 
   // Check backend health
   const checkBackendHealth = useCallback(async () => {
+    console.log("Starting backend health check...");
     try {
       const isAvailable = await apiService.isBackendAvailable();
+      console.log("Backend availability result:", isAvailable);
       setBackendStatus(isAvailable ? "healthy" : "unhealthy");
 
       if (isAvailable) {

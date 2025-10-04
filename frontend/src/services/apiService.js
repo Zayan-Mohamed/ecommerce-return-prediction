@@ -9,9 +9,18 @@ const API_BASE_URL =
   import.meta.env.VITE_API_URL ||
   (import.meta.env.PROD ? "/api" : "http://localhost:8000");
 
+// Debug logging for production
+console.log("Environment debug:", {
+  VITE_API_URL: import.meta.env.VITE_API_URL,
+  PROD: import.meta.env.PROD,
+  API_BASE_URL: API_BASE_URL,
+  ENV_MODE: import.meta.env.MODE,
+});
+
 class ApiService {
   constructor() {
     this.baseUrl = API_BASE_URL;
+    console.log("ApiService initialized with baseUrl:", this.baseUrl);
   }
 
   async getAuthHeaders() {
@@ -180,9 +189,12 @@ class ApiService {
   // Utility method to check if backend is available
   async isBackendAvailable() {
     try {
+      console.log("Checking backend health at:", `${this.baseUrl}/health`);
       await this.checkHealth();
+      console.log("Backend health check successful");
       return true;
-    } catch {
+    } catch (error) {
+      console.error("Backend health check failed:", error);
       return false;
     }
   }
