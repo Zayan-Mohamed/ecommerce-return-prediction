@@ -52,10 +52,11 @@ app.add_middleware(
         "http://localhost:5173",  # Vite dev server
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
-        "https://*.vercel.app",  # Vercel deployments
-        "https://ecommerce-return-prediction.vercel.app",  # Specific Vercel domain
+        "https://ecommerce-return-prediction.vercel.app",  # Main Vercel domain
+        "https://ecommerce-return-prediction-2.vercel.app",  # Numbered Vercel domain
         "https://*.netlify.app"  # Netlify deployments
     ],
+    allow_origin_regex=r"https://ecommerce-return-prediction.*\.vercel\.app",  # All Vercel subdomains/variants
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
