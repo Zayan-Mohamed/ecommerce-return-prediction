@@ -10,26 +10,29 @@ npm error The `npm ci` command can only install with an existing package-lock.js
 
 ## Root Cause 🔍
 
-1. **Missing package-lock.json**: The frontend directory didn't have a lock file for deterministic installs
-2. **Incorrect .vercelignore**: Was accidentally excluding important frontend files like `apiService.js`
+1. **Missing package-lock.json**: The `frontend/package-lock.json` was excluded by `.gitignore` rule `*package-lock.json`
+2. **Overly broad .gitignore**: The wildcard pattern was preventing the lock file from being committed
+3. **Complex .vercelignore**: Was accidentally excluding important frontend files like `apiService.js`
 
 ## Solutions Applied ✅
 
-### 1. **Generated package-lock.json**
+### 1. **Fixed .gitignore**
+
+- Commented out `*package-lock.json` exclusion rule
+- Package lock files are needed for reproducible deployments
+- Now `frontend/package-lock.json` can be committed to repository
+
+### 2. **Generated and committed package-lock.json**
 
 - Ran `npm install` in frontend directory to generate lock file
+- Added to git and committed for Vercel deployment
 - This enables `npm ci` for faster, more reliable installs
 
-### 2. **Fixed .vercelignore**
+### 3. **Simplified .vercelignore**
 
-- Removed wildcard `*.md` pattern that was excluding frontend files
-- Made specific exclusions for documentation files only
-- Ensured `!frontend/` rule properly includes all frontend source files
-
-### 3. **Updated Build Configuration**
-
-- Kept `npm ci` commands for faster installs (now that lock file exists)
-- Verified build process works end-to-end
+- Removed complex negation patterns that were causing issues
+- Made specific exclusions for backend files only
+- Used precise paths to avoid wildcard conflicts
 
 ## Files Modified 📝
 
