@@ -17,11 +17,13 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import json
 
-# Import the model inference agent
+# Import the agents
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from agents.model_inference import get_inference_agent, ModelInferenceAgent
+from agents.feature_engineering import get_feature_engineering_agent, FeatureEngineeringAgent
+from agents.order_processing import get_order_processing_agent, OrderProcessingAgent
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -121,10 +123,18 @@ class FileUploadResponse(BaseModel):
 # Global storage for batch jobs (in production, use Redis or database)
 batch_jobs: Dict[str, Dict[str, Any]] = {}
 
-# Dependency to get inference agent
+# Dependencies to get agents
 def get_agent() -> ModelInferenceAgent:
     """Dependency to provide inference agent"""
     return get_inference_agent()
+
+def get_feature_agent() -> FeatureEngineeringAgent:
+    """Dependency to provide feature engineering agent"""
+    return get_feature_engineering_agent()
+
+def get_order_agent() -> OrderProcessingAgent:
+    """Dependency to provide order processing agent"""
+    return get_order_processing_agent()
 
 def validate_csv_file(file_content: bytes) -> tuple[bool, str, Optional[pd.DataFrame]]:
     """
@@ -314,53 +324,54 @@ async def process_batch_predictions(job_id: str, df: pd.DataFrame, agent: ModelI
         batch_jobs[job_id]["completed_at"] = datetime.now().isoformat()
         logger.error(f"Batch job {job_id} failed: {str(e)}")
 
-# Dependency to get inference agent
-def get_agent() -> ModelInferenceAgent:
-    """Dependency to provide inference agent"""
-    return get_inference_agent()
+
 
 @router.post("/single", response_model=PredictionResponse)
 async def predict_single(
-    request: PredictionRequest,
-    agent: ModelInferenceAgent = Depends(get_agent)
+    prediction_request: PredictionRequest,
+    agent: ModelInferenceAgent = Depends(get_agent),
+    feature_agent: FeatureEngineeringAgent = Depends(get_feature_agent),
+    order_agent: OrderProcessingAgent = Depends(get_order_agent)
 ) -> PredictionResponse:
-    """
-    Make a single return prediction
-    
-    Args:
-        request: Prediction request with feature data
-        agent: Model inference agent
-        
-    Returns:
-        Prediction response with results
-    """
+    """Make a single prediction"""
     try:
-        logger.info(f"Received prediction request for {request.product_category}")
+        # Convert request to DataFrame format expected by the model
+        data = prediction_request.dict()
         
-        # Convert request to feature dictionary
-        features = request.dict()
+        # Step 1: Use order processing agent to create basic features
+        processed_result = order_agent.process_single_order(data)
         
-        # Make prediction using the agent
-        result = agent.predict_single(features)
+        if not processed_result['success']:
+            return PredictionResponse(
+                success=False,
+                error=processed_result['error']
+            )
         
-        # Return successful response
+        # Step 2: Use feature engineering agent to create advanced features
+        basic_features_df = processed_result['prediction_ready_data']
+        final_data = feature_agent.transform(basic_features_df)
+        
+        # Step 3: Make prediction with fully engineered features
+        prediction_result = agent.predict_single(final_data)
+        
+        if not prediction_result['success']:
+            return PredictionResponse(
+                success=False,
+                error=prediction_result.get('error', 'Prediction failed')
+            )
+        
         return PredictionResponse(
             success=True,
-            prediction=result.get('prediction'),
-            model_info=result.get('model_info'),
-            feature_importance=result.get('feature_importance'),
-            metadata=result.get('metadata')
+            prediction=prediction_result['prediction'],
+            model_info=prediction_result.get('model_info'),
+            feature_importance=prediction_result.get('feature_importance'),
+            metadata=prediction_result.get('metadata')
         )
-        
-    except ValueError as ve:
-        logger.error(f"Validation error: {str(ve)}")
-        raise HTTPException(status_code=400, detail=str(ve))
-    
     except Exception as e:
-        logger.error(f"Prediction error: {str(e)}")
+        logger.error(f"Single prediction error: {e}")
         return PredictionResponse(
             success=False,
-            error=str(e)
+            error=f"Prediction failed: {str(e)}"
         )
 
 @router.post("/batch", response_model=BatchPredictionResponse)

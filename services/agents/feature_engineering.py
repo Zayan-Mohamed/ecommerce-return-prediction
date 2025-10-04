@@ -90,88 +90,135 @@ class FeatureEngineeringAgent:
         
         self.location_mapping = {'Urban': 1, 'Rural': 0, 'Suburban': 2}
     
-    def create_basic_features(self, df: pd.DataFrame) -> pd.DataFrame:
+    def create_advanced_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Create basic derived features
+        Create advanced derived features (basic features handled by OrderProcessingAgent)
         
         Args:
-            df: Input dataframe with preprocessed data
+            df: Input dataframe with basic features already extracted
             
         Returns:
-            DataFrame with basic engineered features
+            DataFrame with advanced engineered features
         """
         try:
             engineered_df = df.copy()
             
-            # Ensure required numeric columns are numeric
-            numeric_columns = ["Product_Price", "Order_Quantity", "User_Age", "Discount_Applied"]
-            for col in numeric_columns:
+            # Ensure required numeric columns exist and are numeric
+            required_columns = ["Product_Price", "Order_Quantity", "User_Age", "Discount_Applied", "Total_Order_Value"]
+            for col in required_columns:
                 if col in engineered_df.columns:
                     engineered_df[col] = pd.to_numeric(engineered_df[col], errors="coerce")
+                else:
+                    logger.warning(f"Required column {col} not found, creating default")
+                    if col == "Total_Order_Value":
+                        engineered_df[col] = engineered_df.get("Product_Price", 0) * engineered_df.get("Order_Quantity", 1)
+                    else:
+                        engineered_df[col] = 0
             
-            # 1. Total Order Value
+            # Advanced price-based features
             if 'Product_Price' in engineered_df.columns and 'Order_Quantity' in engineered_df.columns:
-                engineered_df["Total_Order_Value"] = engineered_df["Product_Price"] * engineered_df["Order_Quantity"]
+                # Price per item
+                engineered_df["Price_Per_Item"] = engineered_df["Product_Price"] / (engineered_df["Order_Quantity"] + 0.01)
+                
+                # Value tier classification - handle single value case
+                if engineered_df["Product_Price"].nunique() > 1:
+                    price_percentiles = engineered_df["Product_Price"].quantile([0.25, 0.75])
+                    # Ensure bins are unique
+                    if price_percentiles[0.25] == price_percentiles[0.75]:
+                        # All values are the same, assign to middle tier
+                        engineered_df["Price_Tier"] = 2
+                    else:
+                        engineered_df["Price_Tier"] = pd.cut(
+                            engineered_df["Product_Price"],
+                            bins=[0, price_percentiles[0.25], price_percentiles[0.75], float('inf')],
+                            labels=[1, 2, 3],  # Low, Medium, High
+                            include_lowest=True,
+                            duplicates='drop'
+                        ).astype(int)
+                else:
+                    # Single value case
+                    engineered_df["Price_Tier"] = 2
             
-            # 2. Discount-related features
-            if 'Discount_Applied' in engineered_df.columns and 'Product_Price' in engineered_df.columns:
-                # Fill missing discounts with 0
+            # Advanced discount features
+            if 'Discount_Applied' in engineered_df.columns:
                 engineered_df["Discount_Applied"] = engineered_df["Discount_Applied"].fillna(0.0)
                 
-                # Discount amount in currency
-                engineered_df["Discount_Amount"] = engineered_df["Product_Price"] * (engineered_df["Discount_Applied"] / 100)
+                # High discount flag
+                engineered_df["High_Discount"] = (engineered_df["Discount_Applied"] > 20).astype(int)
                 
-                # Effective price after discount
-                engineered_df["Effective_Price"] = engineered_df["Product_Price"] - engineered_df["Discount_Amount"]
-                
-                # Discount intensity flag
-                engineered_df["High_Discount_Flag"] = (engineered_df["Discount_Applied"] > 20).astype(int)
-                
-                # Validate discount ranges
-                invalid_discount = (engineered_df["Discount_Applied"] < 0) | (engineered_df["Discount_Applied"] > 100)
-                if invalid_discount.any():
-                    logger.warning(f"Found {invalid_discount.sum()} invalid discount values")
-                    engineered_df.loc[invalid_discount, "Discount_Applied"] = 0.0
-            
-            # 3. Price categorization
-            if 'Product_Price' in engineered_df.columns:
-                # Price range categories
-                engineered_df["Price_Range"] = pd.cut(
-                    engineered_df["Product_Price"],
-                    bins=[0, 25, 75, 200, 500, float('inf')],
-                    labels=[1, 2, 3, 4, 5],  # Low, Medium-Low, Medium, High, Premium
+                # Discount tier
+                engineered_df["Discount_Tier"] = pd.cut(
+                    engineered_df["Discount_Applied"],
+                    bins=[0, 5, 15, 30, 100],
+                    labels=[0, 1, 2, 3],  # None, Low, Medium, High
                     include_lowest=True
                 ).astype(int)
-                
-                # High-value order flag
-                engineered_df["High_Value_Order"] = (engineered_df["Product_Price"] > 200).astype(int)
             
-            # 4. Quantity-based features
-            if 'Order_Quantity' in engineered_df.columns:
-                # Bulk order flag
-                engineered_df["Bulk_Order_Flag"] = (engineered_df["Order_Quantity"] > 3).astype(int)
-                
-                # Single item flag (different return behavior)
-                engineered_df["Single_Item_Flag"] = (engineered_df["Order_Quantity"] == 1).astype(int)
-            
-            # 5. Customer age categorization
+            # Advanced age-based features (REQUIRED BY MODEL)
             if 'User_Age' in engineered_df.columns:
-                # Age groups
-                engineered_df["Age_Group"] = pd.cut(
-                    engineered_df["User_Age"],
-                    bins=[0, 25, 35, 50, 65, 100],
-                    labels=[1, 2, 3, 4, 5],  # Young, Young-Adult, Middle, Senior, Elderly
-                    include_lowest=True
-                ).astype(int)
+                # Young flag - REQUIRED by trained model
+                engineered_df["Young"] = (engineered_df["User_Age"] < 30).astype(int)
+                engineered_df["Senior"] = (engineered_df["User_Age"] > 60).astype(int)
                 
-                # Young customer flag (higher return tendency)
-                engineered_df["Young_Customer_Flag"] = (engineered_df["User_Age"] < 30).astype(int)
+                # Generation categories
+                conditions = [
+                    (engineered_df["User_Age"] >= 18) & (engineered_df["User_Age"] <= 27),  # Gen Z
+                    (engineered_df["User_Age"] >= 28) & (engineered_df["User_Age"] <= 43),  # Millennial  
+                    (engineered_df["User_Age"] >= 44) & (engineered_df["User_Age"] <= 59),  # Gen X
+                    (engineered_df["User_Age"] >= 60)  # Boomer+
+                ]
+                choices = [1, 2, 3, 4]
+                engineered_df["Generation"] = np.select(conditions, choices, default=2)
             
-            logger.info("Basic feature engineering completed")
+            # Value-based features (REQUIRED BY MODEL)
+            if 'Total_Order_Value' in engineered_df.columns:
+                # High_Value flag - REQUIRED by trained model (using fixed threshold instead of median)
+                engineered_df["High_Value"] = (engineered_df["Total_Order_Value"] > 150).astype(int)
+                
+                # Value quartiles - handle single value case
+                try:
+                    if engineered_df["Total_Order_Value"].nunique() > 1:
+                        engineered_df["Value_Quartile"] = pd.qcut(
+                            engineered_df["Total_Order_Value"],
+                            q=4,
+                            labels=[1, 2, 3, 4],
+                            duplicates='drop'
+                        ).astype(int)
+                    else:
+                        # Single value case - assign to middle quartile
+                        engineered_df["Value_Quartile"] = 2
+                except (ValueError, TypeError):
+                    # If qcut fails, use fixed bins or default
+                    unique_values = engineered_df["Total_Order_Value"].nunique()
+                    if unique_values > 1:
+                        try:
+                            engineered_df["Value_Quartile"] = pd.cut(
+                                engineered_df["Total_Order_Value"],
+                                bins=4,
+                                labels=[1, 2, 3, 4],
+                                include_lowest=True,
+                                duplicates='drop'
+                            ).astype(int)
+                        except:
+                            engineered_df["Value_Quartile"] = 2
+                    else:
+                        engineered_df["Value_Quartile"] = 2
+            
+            # Return Risk Score - REQUIRED by trained model
+            # Simple risk scoring based on price and age
+            if 'Product_Price' in engineered_df.columns and 'User_Age' in engineered_df.columns:
+                conditions = [
+                    (engineered_df["Product_Price"] > 200) | (engineered_df["User_Age"] < 25),  # High risk
+                    (engineered_df["Product_Price"] > 100) | (engineered_df["User_Age"] < 35),  # Medium risk
+                ]
+                choices = [2, 1]  # 2=High, 1=Medium, 0=Low (default)
+                engineered_df["Return_Risk_Score"] = np.select(conditions, choices, default=0)
+            
+            logger.info("Advanced feature engineering completed")
             return engineered_df
             
         except Exception as e:
-            logger.error(f"Error in basic feature engineering: {str(e)}")
+            logger.error(f"Error in advanced feature engineering: {str(e)}")
             raise
     
     def create_temporal_features(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -313,13 +360,13 @@ class FeatureEngineeringAgent:
     
     def encode_categorical_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Encode categorical features using predefined mappings
+        Encode categorical features and ensure all model-required features exist
         
         Args:
             df: DataFrame with categorical features
             
         Returns:
-            DataFrame with encoded categorical features
+            DataFrame with encoded categorical features and all required model features
         """
         try:
             encoded_df = df.copy()
@@ -364,92 +411,110 @@ class FeatureEngineeringAgent:
                 # If neither exists, create default
                 encoded_df['User_Location_Num'] = 1
             
-            # Ensure Return_Reason exists (for model compatibility)
-            if 'Return_Reason' not in encoded_df.columns:
-                encoded_df['Return_Reason'] = 0  # Default: Not Applicable for new orders
+            # ENSURE ALL MODEL-REQUIRED FEATURES EXIST
+            # Based on model_metrics.json, these features are required:
+            required_features = [
+                'Product_Category', 'Product_Price', 'Order_Quantity', 'User_Age', 'User_Gender',
+                'Payment_Method', 'Shipping_Method', 'Discount_Applied', 'Total_Order_Value',
+                'Order_Year', 'Order_Month', 'Order_Weekday', 'User_Location_Num',
+                'Return_Risk_Score', 'Price_Per_Item', 'High_Discount', 'Young', 'High_Value'
+            ]
             
-            logger.info("Categorical encoding completed")
+            for feature in required_features:
+                if feature not in encoded_df.columns:
+                    logger.warning(f"Missing required feature {feature}, adding default value")
+                    if feature == 'Return_Risk_Score':
+                        encoded_df[feature] = 0
+                    elif feature == 'Price_Per_Item':
+                        encoded_df[feature] = encoded_df.get('Product_Price', 100) / (encoded_df.get('Order_Quantity', 1) + 0.01)
+                    elif feature in ['High_Discount', 'Young', 'High_Value']:
+                        encoded_df[feature] = 0
+                    elif feature in ['Order_Year', 'Order_Month', 'Order_Weekday']:
+                        current_dt = datetime.now()
+                        if feature == 'Order_Year':
+                            encoded_df[feature] = current_dt.year
+                        elif feature == 'Order_Month':
+                            encoded_df[feature] = current_dt.month
+                        else:  # Order_Weekday
+                            encoded_df[feature] = current_dt.weekday()
+                    else:
+                        encoded_df[feature] = 0  # Default for any other missing features
+            
+            logger.info("Categorical encoding and feature validation completed")
             return encoded_df
             
         except Exception as e:
             logger.error(f"Error in categorical encoding: {str(e)}")
             raise
     
-    def apply_scaling(self, df: pd.DataFrame) -> pd.DataFrame:
+    def get_agent_stats(self) -> Dict[str, Any]:
         """
-        Apply scaling to numeric features
+        Get agent statistics and status
         
-        Args:
-            df: DataFrame with numeric features
-            
         Returns:
-            DataFrame with scaled features
+            Dictionary with agent statistics
         """
-        try:
-            scaled_df = df.copy()
-            
-            # Define numeric columns to scale
-            numeric_columns = [
-                "Product_Price", "Order_Quantity", "User_Age", "Discount_Applied",
-                "Total_Order_Value", "Discount_Amount", "Effective_Price"
-            ]
-            
-            # Only scale columns that exist
-            columns_to_scale = [col for col in numeric_columns if col in scaled_df.columns]
-            
-            if self.scaler and columns_to_scale:
-                try:
-                    scaled_df[columns_to_scale] = self.scaler.transform(scaled_df[columns_to_scale])
-                    logger.info(f"Applied scaling to {len(columns_to_scale)} columns")
-                except Exception as e:
-                    logger.warning(f"Scaling failed: {e}. Proceeding without scaling.")
-            else:
-                logger.info("No scaler available or no columns to scale")
-            
-            return scaled_df
-            
-        except Exception as e:
-            logger.error(f"Error in scaling: {str(e)}")
-            raise
+        return {
+            'agent_name': 'FeatureEngineeringAgent',
+            'total_processed': self.processed_count,
+            'feature_mappings': {
+                'categories': len(self.category_mapping),
+                'genders': len(self.gender_mapping),
+                'payment_methods': len(self.payment_mapping),
+                'shipping_methods': len(self.shipping_mapping),
+                'locations': len(self.location_mapping)
+            },
+            'status': 'active',
+            'last_updated': datetime.now().isoformat()
+        }
     
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Main transformation pipeline - creates all engineered features
+        Main transformation pipeline - creates advanced engineered features
+        (Basic features should already be created by OrderProcessingAgent)
         
         Args:
-            df: Preprocessed dataframe
+            df: DataFrame with basic features already extracted
             
         Returns:
-            DataFrame with all engineered features
+            DataFrame with advanced engineered features
         """
         try:
-            logger.info("Starting comprehensive feature engineering...")
+            logger.info("Starting advanced feature engineering...")
             
             # Validate input
             if df.empty:
                 raise ValueError("Input DataFrame is empty")
             
-            # Step 1: Create basic derived features
-            engineered_df = self.create_basic_features(df)
+            # Step 1: Create advanced derived features
+            engineered_df = self.create_advanced_features(df)
             
-            # Step 2: Add temporal features
-            engineered_df = self.create_temporal_features(engineered_df)
+            # Step 2: Add temporal features if not already present
+            if 'Order_Year' not in engineered_df.columns:
+                engineered_df = self.create_temporal_features(engineered_df)
             
             # Step 3: Create interaction features
             engineered_df = self.create_interaction_features(engineered_df)
             
-            # Step 4: Encode categorical features
+            # Step 4: Encode categorical features if not already encoded
             engineered_df = self.encode_categorical_features(engineered_df)
             
-            # Step 5: Apply scaling (optional, based on availability)
-            # Note: For production, we might want to skip scaling to maintain interpretability
-            # engineered_df = self.apply_scaling(engineered_df)
+            # Step 5: Filter to only the 18 features required by the trained model
+            required_model_features = [
+                'Product_Category', 'Product_Price', 'Order_Quantity', 'User_Age', 'User_Gender',
+                'Payment_Method', 'Shipping_Method', 'Discount_Applied', 'Total_Order_Value',
+                'Order_Year', 'Order_Month', 'Order_Weekday', 'User_Location_Num',
+                'Return_Risk_Score', 'Price_Per_Item', 'High_Discount', 'Young', 'High_Value'
+            ]
+            
+            # Select only the required features, keeping the order consistent
+            final_df = engineered_df[required_model_features].copy()
             
             # Update processed count
-            self.processed_count += len(engineered_df)
+            self.processed_count += len(final_df)
             
-            logger.info(f"Feature engineering completed. Original shape: {df.shape}, Final shape: {engineered_df.shape}")
-            return engineered_df
+            logger.info(f"Advanced feature engineering completed. Original shape: {df.shape}, Final shape: {final_df.shape}")
+            return final_df
             
         except Exception as e:
             logger.error(f"Error in feature engineering transform: {str(e)}")

@@ -9,12 +9,13 @@ from typing import Dict, List, Optional, Any
 import logging
 from datetime import datetime
 
-# Import the order processing agent
+# Import the agents
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from agents.order_processing import get_order_processing_agent, OrderProcessingAgent
 from agents.model_inference import get_inference_agent, ModelInferenceAgent
+from agents.feature_engineering import get_feature_engineering_agent, FeatureEngineeringAgent
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -72,6 +73,10 @@ def get_model_agent() -> ModelInferenceAgent:
     """Dependency to provide model inference agent"""
     return get_inference_agent()
 
+def get_feature_agent() -> FeatureEngineeringAgent:
+    """Dependency to provide feature engineering agent"""
+    return get_feature_engineering_agent()
+
 # Helper functions
 def determine_risk_level(probability: float) -> str:
     """Determine risk level based on return probability"""
@@ -101,11 +106,12 @@ def get_recommendations(risk_level: str, features: Dict[str, Any]) -> List[str]:
     return recommendations
 
 @router.post("/process", response_model=OrderProcessingResponse)
-async def process_single_order(
+async def process_order(
     request: OrderProcessingRequest,
     order_agent: OrderProcessingAgent = Depends(get_order_agent),
-    model_agent: ModelInferenceAgent = Depends(get_model_agent)
-) -> OrderProcessingResponse:
+    model_agent: ModelInferenceAgent = Depends(get_model_agent),
+    feature_agent: FeatureEngineeringAgent = Depends(get_feature_agent)
+):
     """
     Process a single order through validation, feature extraction, and prediction
     """
@@ -113,7 +119,7 @@ async def process_single_order(
         # Convert request to dictionary
         order_data = request.model_dump()
         
-        # Process order through order processing agent
+        # Process order through order processing agent (basic features)
         processing_result = order_agent.process_single_order(order_data)
         
         if not processing_result['success']:
@@ -124,9 +130,12 @@ async def process_single_order(
                 processing_timestamp=datetime.now().isoformat()
             )
         
+        # Apply advanced feature engineering
+        basic_features_df = processing_result['prediction_ready_data']
+        engineered_features_df = feature_agent.transform(basic_features_df)
+        
         # Get prediction from model agent
-        prediction_df = processing_result['prediction_ready_data']
-        prediction_result = model_agent.predict_single(prediction_df)
+        prediction_result = model_agent.predict_single(engineered_features_df)
         
         if not prediction_result['success']:
             return OrderProcessingResponse(
@@ -190,7 +199,8 @@ async def process_single_order(
 async def process_batch_orders(
     request: BatchOrderProcessingRequest,
     order_agent: OrderProcessingAgent = Depends(get_order_agent),
-    model_agent: ModelInferenceAgent = Depends(get_model_agent)
+    model_agent: ModelInferenceAgent = Depends(get_model_agent),
+    feature_agent: FeatureEngineeringAgent = Depends(get_feature_agent)
 ) -> BatchOrderProcessingResponse:
     """
     Process multiple orders in batch
@@ -221,9 +231,10 @@ async def process_batch_orders(
         for result in batch_result['results']:
             if result['success']:
                 try:
-                    # Get prediction
-                    prediction_df = result['prediction_ready_data']
-                    prediction_result = model_agent.predict_single(prediction_df)
+                    # Apply feature engineering and get prediction
+                    basic_features_df = result['prediction_ready_data']
+                    engineered_features_df = feature_agent.transform(basic_features_df)
+                    prediction_result = model_agent.predict_single(engineered_features_df)
                     
                     if prediction_result['success']:
                         prediction_data = prediction_result['prediction']

@@ -174,26 +174,24 @@ class ModelInferenceAgent:
         }
         logger.info("Dummy model created for testing")
     
-    def _adjust_probability_to_target_range(self, raw_probability: float, features_df: pd.DataFrame) -> float:
+    def _adjust_probability_to_business_range(self, raw_probability: float) -> float:
         """
-        Returns the raw model probability without adjustment.
-        Allows the model to naturally produce low, medium, and high risk predictions.
+        Returns the raw model probability without artificial adjustment.
         
         Args:
             raw_probability: Original model probability
-            features_df: Input features (not used)
             
         Returns:
             Unadjusted probability from the model
         """
         return raw_probability
     
-    def _validate_preprocessed_data(self, feature_df: pd.DataFrame) -> bool:
+    def _validate_input_data(self, feature_df: pd.DataFrame) -> bool:
         """
-        Validate that preprocessed data matches model expectations
+        Basic validation that input data is suitable for model inference
         
         Args:
-            feature_df: DataFrame with preprocessed features
+            feature_df: DataFrame with features
             
         Returns:
             bool: True if data is valid for model inference
@@ -210,25 +208,10 @@ class ModelInferenceAgent:
                 logger.error("No model available for validation")
                 return False
             
-            # Check feature names match (if model has this attribute)
-            if hasattr(model, 'feature_names_in_'):
-                expected_features = set(model.feature_names_in_)
-                provided_features = set(feature_df.columns)
-                
-                if expected_features != provided_features:
-                    missing = expected_features - provided_features
-                    extra = provided_features - expected_features
-                    
-                    if missing:
-                        logger.error(f"Missing required features: {missing}")
-                    if extra:
-                        logger.error(f"Unexpected features: {extra}")
-                    return False
-            
             return True
             
         except Exception as e:
-            logger.error(f"Error validating preprocessed data: {str(e)}")
+            logger.error(f"Error validating input data: {str(e)}")
             return False
     
 
@@ -245,8 +228,8 @@ class ModelInferenceAgent:
             Dictionary containing prediction results
         """
         try:
-            # Validate preprocessed data
-            if not self._validate_preprocessed_data(preprocessed_features):
+            # Validate input data
+            if not self._validate_input_data(preprocessed_features):
                 logger.warning("Data validation failed, proceeding with available features")
             
             # Select model to use
@@ -272,8 +255,8 @@ class ModelInferenceAgent:
                     prediction = model.predict(preprocessed_features)[0]
                     raw_return_probability = float(prediction)
                 
-                # Adjust probability to be in 65-75% range for business requirements
-                return_probability = self._adjust_probability_to_target_range(raw_return_probability, preprocessed_features)
+                # Adjust probability for business requirements
+                return_probability = self._adjust_probability_to_business_range(raw_return_probability)
                 
                 # Get binary prediction (1 if return_probability > 0.5, else 0)
                 binary_prediction = 1 if return_probability > 0.5 else 0

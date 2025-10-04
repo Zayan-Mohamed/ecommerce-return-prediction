@@ -101,70 +101,48 @@ class OrderProcessingAgent:
             logger.error(error_msg)
             return False, None, error_msg
     
-    def _encode_categorical_features(self, order_data: OrderData) -> Dict[str, int]:
-        """
-        Encode categorical features to match model expectations
-        
-        Args:
-            order_data: Validated order data
-            
-        Returns:
-            Dictionary of encoded categorical features
-        """
-        # Simple encoding mappings based on model expectations
-        category_mapping = {
-            'Electronics': 1, 'Clothing': 2, 'Books': 3, 'Home': 4, 'Toys': 5,
-            'Sports': 6, 'Beauty': 7, 'Automotive': 8, 'Health': 9, 'Home & Garden': 4
-        }
-        
-        gender_mapping = {'Male': 1, 'Female': 2, 'Other': 0}
-        
-        payment_mapping = {
-            'Credit Card': 1, 'Debit Card': 2, 'PayPal': 3, 'Bank Transfer': 4,
-            'Cash': 5, 'Digital Wallet': 6, 'Gift Card': 7
-        }
-        
-        shipping_mapping = {'Standard': 1, 'Express': 2, 'Next-Day': 3}
-        
+    def _get_basic_mappings(self) -> Dict[str, Dict[str, int]]:
+        """Get basic categorical mappings (moved complex encoding to FeatureEngineeringAgent)"""
         return {
-            'Product_Category': category_mapping.get(order_data.product_category, 1),
-            'User_Gender': gender_mapping.get(order_data.gender, 0),
-            'Payment_Method': payment_mapping.get(order_data.payment_method, 1),
-            'Shipping_Method': shipping_mapping.get(order_data.shipping_method or 'Standard', 1),
-            'Return_Reason': 0,  # Default for new orders (0 = Not Applicable)
-            'User_Location_Num': 1  # Simplified location encoding
+            'category': {'Electronics': 1, 'Clothing': 2, 'Books': 3, 'Home': 4, 'Toys': 5,
+                        'Sports': 6, 'Beauty': 7, 'Automotive': 8, 'Health': 9, 'Home & Garden': 4},
+            'gender': {'Male': 1, 'Female': 2, 'Other': 0},
+            'payment': {'Credit Card': 1, 'Debit Card': 2, 'PayPal': 3, 'Bank Transfer': 4,
+                       'Cash': 5, 'Digital Wallet': 6, 'Gift Card': 7},
+            'shipping': {'Standard': 1, 'Express': 2, 'Next-Day': 3}
         }
 
-    def extract_features(self, order_data: OrderData) -> Dict[str, Any]:
+    def extract_basic_features(self, order_data: OrderData) -> Dict[str, Any]:
         """
-        Extract features from validated order data
+        Extract basic features from validated order data (complex feature engineering moved to FeatureEngineeringAgent)
         
         Args:
             order_data: Validated order data
             
         Returns:
-            Dictionary of features ready for model prediction
+            Dictionary of basic features
         """
         try:
-            # Get encoded categorical features
-            encoded_features = self._encode_categorical_features(order_data)
+            # Get basic categorical mappings
+            mappings = self._get_basic_mappings()
             
-            # Create feature dictionary in the exact format expected by the model
+            # Create basic feature dictionary
             features = {
-                'Product_Category': encoded_features['Product_Category'],
+                'Product_Category': mappings['category'].get(order_data.product_category, 1),
                 'Product_Price': float(order_data.price),
                 'Order_Quantity': int(order_data.quantity),
-                'Return_Reason': encoded_features['Return_Reason'],
                 'User_Age': int(order_data.age),
-                'User_Gender': encoded_features['User_Gender'],
-                'Payment_Method': encoded_features['Payment_Method'],
-                'Shipping_Method': encoded_features['Shipping_Method'],
+                'User_Gender': mappings['gender'].get(order_data.gender, 0),
+                'Payment_Method': mappings['payment'].get(order_data.payment_method, 1),
+                'Shipping_Method': mappings['shipping'].get(order_data.shipping_method or 'Standard', 1),
                 'Discount_Applied': float(order_data.discount_applied or 0.0),
-                'Total_Order_Value': float(order_data.price * order_data.quantity),
-                'User_Location_Num': encoded_features['User_Location_Num']
+                'User_Location_Num': 1  # Simplified location encoding
             }
             
-            # Add temporal features
+            # Add basic derived features
+            features['Total_Order_Value'] = features['Product_Price'] * features['Order_Quantity']
+            
+            # Add temporal features if order_date provided
             if order_data.order_date:
                 try:
                     order_dt = datetime.strptime(order_data.order_date, '%Y-%m-%d')
@@ -178,7 +156,6 @@ class OrderProcessingAgent:
                     features['Order_Month'] = int(current_dt.month)
                     features['Order_Weekday'] = int(current_dt.weekday())
             else:
-                # Use current date if not provided
                 current_dt = datetime.now()
                 features['Order_Year'] = int(current_dt.year)
                 features['Order_Month'] = int(current_dt.month)
@@ -187,65 +164,22 @@ class OrderProcessingAgent:
             return features
             
         except Exception as e:
-            logger.error(f"Error extracting features: {str(e)}")
+            logger.error(f"Error extracting basic features: {str(e)}")
             raise
     
     def prepare_for_prediction(self, features: Dict[str, Any]) -> pd.DataFrame:
         """
-        Prepare features as DataFrame for model prediction
+        Prepare basic features as DataFrame (advanced feature engineering done by FeatureEngineeringAgent)
         
         Args:
-            features: Extracted features dictionary
+            features: Basic extracted features dictionary
             
         Returns:
-            DataFrame ready for ModelInferenceAgent
+            DataFrame with basic features
         """
         try:
-            # Create DataFrame with base features
-            ordered_features = {
-                'Product_Category': features['Product_Category'],
-                'Product_Price': features['Product_Price'],
-                'Order_Quantity': features['Order_Quantity'],
-                'User_Age': features['User_Age'],
-                'User_Gender': features['User_Gender'],
-                'Payment_Method': features['Payment_Method'],
-                'Shipping_Method': features['Shipping_Method'],
-                'Discount_Applied': features['Discount_Applied'],
-                'Total_Order_Value': features['Total_Order_Value'],
-                'Order_Year': features['Order_Year'],
-                'Order_Month': features['Order_Month'],
-                'Order_Weekday': features['Order_Weekday'],
-                'User_Location_Num': features['User_Location_Num']
-            }
-            
-            # Add engineered features to match the trained model
-            # Return_Risk_Score: Simplified risk indicator (0=low, 1=medium, 2=high)
-            # Based on price and age as proxies for return risk
-            price = features['Product_Price']
-            age = features['User_Age']
-            if price > 200 or age < 25:
-                ordered_features['Return_Risk_Score'] = 2  # High risk
-            elif price > 100 or age < 35:
-                ordered_features['Return_Risk_Score'] = 1  # Medium risk
-            else:
-                ordered_features['Return_Risk_Score'] = 0  # Low risk
-            
-            # Price_Per_Item: Price divided by quantity
-            ordered_features['Price_Per_Item'] = features['Product_Price'] / (features['Order_Quantity'] + 0.01)
-            
-            # High_Discount: 1 if discount > 20%, else 0
-            ordered_features['High_Discount'] = 1 if features['Discount_Applied'] > 20 else 0
-            
-            # Young: 1 if age < 30, else 0 (match trained model feature name)
-            ordered_features['Young'] = 1 if features['User_Age'] < 30 else 0
-            
-            # High_Value: 1 if total value > median (~150), else 0 (match trained model feature name)
-            # Using 150 as approximate median from training data
-            ordered_features['High_Value'] = 1 if features['Total_Order_Value'] > 150 else 0
-            
-            # Convert to DataFrame (single row)
-            df = pd.DataFrame([ordered_features])
-            
+            # Create DataFrame with basic features (no advanced engineering here)
+            df = pd.DataFrame([features])
             return df
             
         except Exception as e:
@@ -283,8 +217,8 @@ class OrderProcessingAgent:
                     'order_id': order_id
                 }
             
-            # Step 2: Extract features  
-            features = self.extract_features(validated_data)
+            # Step 2: Extract basic features  
+            features = self.extract_basic_features(validated_data)
             
             # Step 3: Prepare for prediction
             prediction_df = self.prepare_for_prediction(features)

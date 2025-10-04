@@ -175,13 +175,11 @@ class BusinessIntelligenceAgent:
         else:
             return 'HIGH'
     
-    def calculate_revenue_impact(self, predictions: List[Dict[str, Any]], 
-                               time_period_days: int = 30) -> Dict[str, Any]:
+    def calculate_revenue_impact(self, time_period_days: int = 30) -> Dict[str, Any]:
         """
-        Calculate revenue impact from predictions over a time period
+        Calculate revenue impact from recent predictions
         
         Args:
-            predictions: List of prediction records
             time_period_days: Number of days to analyze
             
         Returns:
@@ -192,7 +190,7 @@ class BusinessIntelligenceAgent:
             
             # Filter predictions to time period
             recent_predictions = [
-                pred for pred in predictions
+                pred for pred in self.prediction_history
                 if datetime.fromisoformat(pred['timestamp']) >= cutoff_date
             ]
             
@@ -201,15 +199,13 @@ class BusinessIntelligenceAgent:
                     'time_period_days': time_period_days,
                     'total_predictions': 0,
                     'total_revenue_analyzed': 0.0,
-                    'revenue_at_risk': 0.0,
                     'estimated_revenue_saved': 0.0,
                     'roi_percentage': 0.0
                 }
             
-            # Calculate metrics
+            # Calculate basic metrics
             total_predictions = len(recent_predictions)
             total_revenue = sum(pred['order_value'] for pred in recent_predictions)
-            total_revenue_at_risk = sum(pred['revenue_at_risk'] for pred in recent_predictions)
             
             # Estimate revenue saved based on intervention
             high_risk_orders = [pred for pred in recent_predictions if pred['risk_level'] == 'HIGH']
@@ -224,42 +220,16 @@ class BusinessIntelligenceAgent:
             operational_cost = total_predictions * 0.10
             roi_percentage = ((total_estimated_saved - operational_cost) / operational_cost * 100) if operational_cost > 0 else 0
             
-            # Risk distribution
-            risk_distribution = {
-                'high_risk': len(high_risk_orders),
-                'medium_risk': len(medium_risk_orders),
-                'low_risk': total_predictions - len(high_risk_orders) - len(medium_risk_orders)
-            }
-            
-            # Category breakdown
-            category_impact = defaultdict(lambda: {'orders': 0, 'revenue_at_risk': 0.0, 'potential_saved': 0.0})
-            for pred in recent_predictions:
-                category = pred['category']
-                category_impact[category]['orders'] += 1
-                category_impact[category]['revenue_at_risk'] += pred['revenue_at_risk']
-                
-                if pred['risk_level'] == 'HIGH':
-                    category_impact[category]['potential_saved'] += pred['order_value'] * 0.4
-                elif pred['risk_level'] == 'MEDIUM':
-                    category_impact[category]['potential_saved'] += pred['order_value'] * 0.2
-            
             return {
                 'time_period_days': time_period_days,
-                'analysis_period': {
-                    'start_date': cutoff_date.isoformat(),
-                    'end_date': datetime.now().isoformat()
-                },
                 'total_predictions': total_predictions,
                 'total_revenue_analyzed': total_revenue,
-                'revenue_at_risk': total_revenue_at_risk,
                 'estimated_revenue_saved': total_estimated_saved,
                 'operational_cost': operational_cost,
                 'net_benefit': total_estimated_saved - operational_cost,
                 'roi_percentage': roi_percentage,
-                'risk_distribution': risk_distribution,
-                'category_breakdown': dict(category_impact),
                 'average_order_value': total_revenue / total_predictions if total_predictions > 0 else 0,
-                'average_processing_time_ms': np.mean([pred.get('processing_time_ms', 0) for pred in recent_predictions])
+                'analysis_timestamp': datetime.now().isoformat()
             }
             
         except Exception as e:
