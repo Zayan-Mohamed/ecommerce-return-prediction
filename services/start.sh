@@ -59,14 +59,17 @@ echo "🌍 Environment variables:"
 echo "PORT: ${PORT:-'not set'}"
 echo "PYTHONPATH: ${PYTHONPATH:-'not set'}"
 
-# Check if PORT is set, if not use default
+# Set PORT with proper validation
 if [ -z "$PORT" ]; then
     echo "⚠️  PORT not set, using default 8000"
-    export PORT=8000
+    PORT=8000
+elif ! [[ "$PORT" =~ ^[0-9]+$ ]]; then
+    echo "⚠️  PORT '$PORT' is not a valid number, using default 8000"
+    PORT=8000
 fi
 
 echo "=================================="
 echo "🎯 Starting application on port $PORT"
 
-# Start the application
-exec uvicorn main:app --host 0.0.0.0 --port $PORT --log-level info
+# Start the application with validated port
+exec uvicorn main:app --host 0.0.0.0 --port "$PORT" --log-level info

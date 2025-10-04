@@ -7,6 +7,7 @@ The Railway deployment was failing health checks because:
 1. **Heavy Model Loading**: The FastAPI app was trying to load ML models during startup via agent imports
 2. **Synchronous Agent Initialization**: Agents were being imported at module level, causing blocking operations
 3. **Missing Fallback**: No graceful degradation when models couldn't be loaded
+4. **PORT Environment Variable Issue**: `$PORT` wasn't being properly expanded in uvicorn command
 
 ## Solutions Implemented ✅
 
@@ -31,14 +32,23 @@ The Railway deployment was failing health checks because:
 ### 4. **Enhanced Startup Diagnostics**
 
 - Added `start.sh` script with comprehensive startup checks
-- Better error logging and environment validation
-- Helps debug Railway deployment issues
+- Added `startup.py` Python-based startup script with better error handling
+- Environment validation and port parsing
+- Better error logging and diagnostics
 
-### 5. **Improved Docker Configuration**
+### 5. **Fixed PORT Environment Variable**
+
+- Python-based startup script properly handles PORT environment variable
+- Validates port is a valid integer with fallback to 8000
+- Multiple fallback mechanisms in Dockerfile
+- Updated railway.toml with explicit startup command
+
+### 6. **Improved Docker Configuration**
 
 - Updated Dockerfile with better dependency management
 - Added system dependencies for ML libraries
-- Improved logging and error handling
+- Multiple startup fallback mechanisms
+- Better logging and error handling
 
 ## Files Modified 📝
 
@@ -54,16 +64,27 @@ The Railway deployment was failing health checks because:
    - Works without ML models
    - Compatible API interface
 
-3. **`services/start.sh`** (NEW)
+3. **`services/start.sh`** (UPDATED)
 
-   - Comprehensive startup diagnostics
-   - Environment validation
-   - Better error reporting
+   - Fixed PORT variable expansion
+   - Better validation and error handling
 
-4. **`Dockerfile`**
-   - Enhanced dependency installation
-   - Startup script integration
-   - Better logging configuration
+4. **`services/startup.py`** (NEW)
+
+   - Python-based startup script
+   - Robust PORT environment variable handling
+   - Comprehensive validation and logging
+
+5. **`Dockerfile`** (UPDATED)
+
+   - Multiple startup fallback mechanisms
+   - Better dependency management
+   - Fixed PORT handling
+
+6. **`railway.toml`** (UPDATED)
+   - Explicit startCommand using Python script
+   - Better health check configuration
+   - Restart policy settings
 
 ## Deployment Impact 🚀
 
@@ -79,6 +100,12 @@ The Railway deployment was failing health checks because:
 - Graceful degradation to heuristic predictions
 - Better user experience during startup
 
+### **PORT Issue Resolution**
+
+- Proper handling of Railway's PORT environment variable
+- Validation and fallback for invalid port values
+- Multiple startup mechanisms for reliability
+
 ### **Debugging Support**
 
 - Detailed startup logging
@@ -90,6 +117,8 @@ The Railway deployment was failing health checks because:
 1. **Local Testing**: ✅ Health endpoint works
 2. **App Creation**: ✅ FastAPI app creates without errors
 3. **Import Testing**: ✅ All critical imports successful
+4. **PORT Handling**: ✅ Python startup script validates PORT correctly
+5. **Router Loading**: ✅ All 3 routers load successfully in testing
 
 ## Next Steps for Railway 🎯
 
@@ -98,4 +127,16 @@ The Railway deployment was failing health checks because:
 3. **Verify Health**: Health check should pass within 30 seconds
 4. **Test Endpoints**: Verify `/health`, `/`, and prediction endpoints work
 
-The health check failures should now be resolved! 🎉
+## Error Resolution Summary 💡
+
+**Previous Error**: `Error: Invalid value for '--port': '$PORT' is not a valid integer`
+
+**Root Cause**: Shell wasn't expanding the `$PORT` environment variable properly
+
+**Solution**:
+
+- Created Python-based startup script that properly handles environment variables
+- Added validation and fallback mechanisms
+- Updated Railway configuration for explicit startup command
+
+The PORT and health check issues should now be fully resolved! 🎉
