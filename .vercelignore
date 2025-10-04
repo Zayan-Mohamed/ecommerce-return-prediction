@@ -1,17 +1,14 @@
 # Python backend directory - exclude entire services folder
-
 /services/
 
 # Python files anywhere in the project
-
-_.py
-_.pyc
-_.pyo
-_.pyd
-\*\*/**pycache**/
+*.py
+*.pyc
+*.pyo
+*.pyd
+**/__pycache__/
 
 # Python virtual environments
-
 .Python
 env/
 venv/
