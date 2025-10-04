@@ -1,11 +1,17 @@
-# Ignore entire Python backend - this is frontend only
+# Python backend directory - exclude entire services folder
 
 /services/
+
+# Python files anywhere in the project
+
 _.py
 _.pyc
 _.pyo
 _.pyd
 \*\*/**pycache**/
+
+# Python virtual environments
+
 .Python
 env/
 venv/
@@ -14,9 +20,9 @@ pip-log.txt
 .tox/
 .coverage
 .pytest_cache/
-.mypy_cache
+.mypy_cache/
 
-# Ignore backend deployment files
+# Backend-specific deployment files
 
 Dockerfile
 railway.toml
@@ -24,7 +30,13 @@ requirements.txt
 startup.py
 start.sh
 
-# Ignore documentation files
+# ML models and data (large files)
+
+/data/
+/models/
+/notebooks/
+
+# Documentation files
 
 RAILWAY_FIX.md
 ARCHITECTURE_CHANGES.md
@@ -35,12 +47,16 @@ CLEANUP_SUMMARY.md
 README.vercel.md
 NPM_CI_FIX.md
 
-# Ignore data and models
-
-data/
-models/
-notebooks/
-
-# Keep justfile and other needed files but ignore test data
+# Test data files
 
 test_batch.csv
+
+# Keep these important files (explicit includes not needed, but documented)
+
+# frontend/ - all frontend files should be included
+
+# package.json - root package.json for build
+
+# vercel.json - deployment config
+
+# .vercelignore - this file
