@@ -33,7 +33,7 @@ import {
 } from "@heroicons/react/24/outline";
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { _user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [backendStatus, setBackendStatus] = useState("checking");
@@ -313,17 +313,17 @@ const Dashboard = () => {
     }
   };
 
-  // Export predictions
-  const handleExport = async (format) => {
-    try {
-      await apiService.exportPredictions(
-        { date_range: dateRange.range },
-        format
-      );
-    } catch (error) {
-      console.error("Export failed:", error);
-    }
-  };
+  // // Export predictions
+  // const handleExport = async (format) => {
+  //   try {
+  //     await apiService.exportPredictions(
+  //       { date_range: dateRange.range },
+  //       format
+  //     );
+  //   } catch (error) {
+  //     console.error("Export failed:", error);
+  //   }
+  // };
 
   // Tab configuration
   const tabs = [
@@ -333,11 +333,11 @@ const Dashboard = () => {
       label: "Single Prediction",
       icon: <CubeIcon className="h-4 w-4" />,
     },
-    {
-      id: "batch",
-      label: "Batch Processing",
-      icon: <DocumentChartBarIcon className="h-4 w-4" />,
-    },
+    // {
+    //   id: "batch",
+    //   label: "Batch Processing",
+    //   icon: <DocumentChartBarIcon className="h-4 w-4" />,
+    // },
     {
       id: "analytics",
       label: "Analytics",

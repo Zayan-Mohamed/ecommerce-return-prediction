@@ -53,7 +53,7 @@ const LandingPage = () => {
   ]
 
   const stats = [
-    { number: "95%", label: "Prediction Accuracy" },
+    { number: "72%", label: "Prediction Accuracy" },
     { number: "30%", label: "Reduction in Returns" },
     { number: "500K+", label: "Orders Analyzed" },
     { number: "24/7", label: "System Uptime" }
