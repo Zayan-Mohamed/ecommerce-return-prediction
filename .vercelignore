@@ -1,11 +1,10 @@
 # Ignore entire Python backend - this is frontend only
-
-services/
-_.py
-_.pyc
-_.pyo
-_.pyd
-\*\*/**pycache**/
+/services/
+*.py
+*.pyc
+*.pyo
+*.pyd
+**/__pycache__/
 .Python
 env/
 venv/
