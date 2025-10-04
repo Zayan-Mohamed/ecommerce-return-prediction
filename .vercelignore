@@ -5,7 +5,7 @@ _.py
 _.pyc
 _.pyo
 _.pyd
-**pycache**/
+\*\*/**pycache**/
 .Python
 env/
 venv/
@@ -24,20 +24,23 @@ requirements.txt
 startup.py
 start.sh
 
-# Ignore documentation files (but not all .md files in frontend)
+# Ignore documentation files
 
-/RAILWAY_FIX.md
-/ARCHITECTURE_CHANGES.md
-/VERCEL_DEBUG.md
-/DEPLOYMENT.md
-/B2B-ECOMMERCE-RETURN-PREDICTION-DEVELOPMENT-PLAN.md
-/CLEANUP_SUMMARY.md
-/README.vercel.md
+RAILWAY_FIX.md
+ARCHITECTURE_CHANGES.md
+VERCEL_DEBUG.md
+DEPLOYMENT.md
+B2B-ECOMMERCE-RETURN-PREDICTION-DEVELOPMENT-PLAN.md
+CLEANUP_SUMMARY.md
+README.vercel.md
+NPM_CI_FIX.md
 
-# Keep frontend and essential files - everything else should be included by default
+# Ignore data and models
 
-!frontend/
-!package.json
-!vercel.json
-!.vercelignore
-!README.md
+data/
+models/
+notebooks/
+
+# Keep justfile and other needed files but ignore test data
+
+test_batch.csv

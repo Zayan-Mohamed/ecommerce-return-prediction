@@ -24,7 +24,8 @@ frontend/.vscode/*
 *.sln
 *.sw?
 
-*package-lock.json
+# Keep package-lock.json for reproducible builds
+# *package-lock.json
 venv/
 .venv/*
 services/.venv
