@@ -16,7 +16,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY services/ .
 
 # Make scripts executable
-RUN chmod +x start.sh startup.py
+RUN chmod +x startup.py
 
 # Create a non-root user for security
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
