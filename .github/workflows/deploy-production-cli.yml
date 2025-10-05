@@ -216,8 +216,8 @@ jobs:
         id: railway_deploy
         run: |
           cd services
-          # Use environment variable authentication (Railway CLI v3+ supports this)
-          railway deploy --service ${{ secrets.RAILWAY_SERVICE_ID }}
+          # Use the correct Railway command: 'up' instead of 'deploy'
+          railway up --service=${{ secrets.RAILWAY_SERVICE_ID }}
           echo "status=initiated" >> $GITHUB_OUTPUT
           echo "Railway deployment initiated successfully"
         env:
