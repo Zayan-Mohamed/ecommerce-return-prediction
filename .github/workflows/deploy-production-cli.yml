@@ -305,38 +305,21 @@ jobs:
           npm run build
           echo "Frontend build completed successfully"
 
-      - name: Deploy to Vercel (Prebuilt Output Method)
+      - name: Deploy to Vercel (Official Method)
         id: vercel_deploy
-        run: |
-          echo "Deploying to Vercel using prebuilt method..."
-
-          # Deploy the built frontend directly using absolute path
-          npx vercel deploy frontend/dist \
-            --token=${{ secrets.VERCEL_TOKEN }} \
-            --scope=${{ secrets.VERCEL_ORG_ID }} \
-            --name=ecommerce-return-prediction \
-            --prod \
-            --prebuilt \
-            --yes \
-            2>&1 || {
-              echo "Prebuilt deployment failed, trying alternative method..."
-              # Alternative: Deploy from frontend directory with force flag
-              cd frontend
-              npx vercel --token=${{ secrets.VERCEL_TOKEN }} \
-                --scope=${{ secrets.VERCEL_ORG_ID }} \
-                --prod \
-                --yes \
-                --force \
-                --no-clipboard \
-                dist
-            }
-
-          echo "status=completed" >> $GITHUB_OUTPUT
-          echo "Vercel deployment completed successfully"
+        working-directory: frontend
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          echo "Deploying to Vercel with environment variables..."
+          
+          # When VERCEL_ORG_ID and VERCEL_PROJECT_ID are set as env vars,
+          # Vercel CLI bypasses project linking and uses these directly
+          npx vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} --yes
+          
+          echo "status=completed" >> $GITHUB_OUTPUT
+          echo "Vercel deployment completed successfully"
 
       - name: Verify frontend deployment
         id: verify_frontend
