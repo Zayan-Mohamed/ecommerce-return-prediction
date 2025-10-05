@@ -178,6 +178,7 @@ jobs:
     needs: [pre_deployment_validation, sync_to_personal_repository]
     if: needs.pre_deployment_validation.outputs.should_deploy == 'true'
     runs-on: ubuntu-latest
+    container: ghcr.io/railwayapp/cli:latest
     outputs:
       deployment_status: ${{ steps.railway_deploy.outputs.status }}
       backend_url: ${{ steps.verify_deployment.outputs.backend_url }}
@@ -188,16 +189,6 @@ jobs:
           repository: ${{ secrets.PERSONAL_GITHUB_USERNAME }}/ecommerce-return-prediction
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
-      - name: Setup Node.js for Railway CLI
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install Railway CLI
-        run: |
-          npm install -g @railway/cli@latest
-          echo "Railway CLI installed successfully"
-
       - name: Deploy backend to Railway
         id: railway_deploy
         run: |
@@ -207,6 +198,11 @@ jobs:
           echo "Railway deployment initiated successfully"
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Install curl for health checks
+        run: |
+          apk add --no-cache curl
+          echo "Curl installed for health checks"
 
       - name: Wait for Railway deployment completion
         run: |
