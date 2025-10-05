@@ -345,7 +345,7 @@ jobs:
       - name: Test cross-origin resource sharing configuration
         run: |
           BACKEND_URL="https://ecommerce-return-prediction-production.up.railway.app"
-          FRONTEND_URL="https://ecommerce-return-prediction.vercel.app"
+          FRONTEND_URL="https://ecommerce-return-prediction-2.vercel.app"
 
           echo "Testing CORS preflight request from frontend to backend"
           CORS_RESPONSE=$(curl -H "Origin: $FRONTEND_URL" \
