@@ -146,12 +146,19 @@ jobs:
 
       - name: Add personal fork as remote repository
         run: |
-          git remote add personal-fork https://${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/${{ secrets.PERSONAL_GITHUB_USERNAME }}/ecommerce-return-prediction.git
-          echo "Personal fork remote added successfully"
+          if git remote get-url personal-fork >/dev/null 2>&1; then
+            echo "Personal fork remote already exists, updating URL"
+            git remote set-url personal-fork https://${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/${{ secrets.PERSONAL_GITHUB_USERNAME }}/ecommerce-return-prediction.git
+          else
+            echo "Adding personal fork remote repository"
+            git remote add personal-fork https://${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/${{ secrets.PERSONAL_GITHUB_USERNAME }}/ecommerce-return-prediction.git
+          fi
+          echo "Personal fork remote configured successfully"
 
       - name: Push changes to personal fork
         id: sync_result
         run: |
+          echo "Attempting to push to personal fork"
           git push personal-fork main --force
           echo "status=success" >> $GITHUB_OUTPUT
           echo "Code successfully synced to personal fork"
@@ -195,7 +202,7 @@ jobs:
         id: railway_deploy
         run: |
           cd services
-          railway deploy --service=${{ secrets.RAILWAY_SERVICE_ID }} --detach
+          railway deploy --detach
           echo "status=initiated" >> $GITHUB_OUTPUT
           echo "Railway deployment initiated successfully"
         env:
