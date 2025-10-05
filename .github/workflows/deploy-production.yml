@@ -1,0 +1,77 @@
+name: Deploy to Vercel and Railway
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: # Allow manual deployment
+
+jobs:
+  deploy-frontend:
+    name: Deploy Frontend to Vercel
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm run build
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: ./
+          vercel-args: '--prod'
+
+  deploy-backend:
+    name: Deploy Backend to Railway
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Railway
+        uses: bervProject/railway-deploy@v1.0.0
+        with:
+          railway_token: ${{ secrets.RAILWAY_TOKEN }}
+          service: ${{ secrets.RAILWAY_SERVICE_ID }}
+
+  health-check:
+    name: Post-deployment Health Check
+    needs: [deploy-frontend, deploy-backend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for deployments
+        run: sleep 30
+
+      - name: Check Frontend Health
+        run: |
+          curl -f https://ecommerce-return-prediction.vercel.app/ || exit 1
+
+      - name: Check Backend Health
+        run: |
+          curl -f https://ecommerce-return-prediction-production.up.railway.app/health || exit 1
+
+      - name: Test Frontend-Backend Connection
+        run: |
+          # Test CORS and API connectivity
+          curl -H "Origin: https://ecommerce-return-prediction.vercel.app" \
+               -H "Access-Control-Request-Method: GET" \
+               -X OPTIONS \
+               https://ecommerce-return-prediction-production.up.railway.app/health || exit 1
