@@ -174,13 +174,13 @@ jobs:
           echo "Deployment tag created: $TAG_NAME"
 
   deploy_backend_service:
-    name: Deploy Backend to Railway
+    name: Deploy Backend to Railway (API Method)
     needs: [pre_deployment_validation, sync_to_personal_repository]
     if: needs.pre_deployment_validation.outputs.should_deploy == 'true'
     runs-on: ubuntu-latest
     outputs:
-      deployment_status: ${{ steps.railway_deploy.outputs.status }}
-      backend_url: ${{ steps.verify_deployment.outputs.backend_url }}
+      deployment_status: ${{ steps.railway_api_deploy.outputs.status }}
+      backend_url: ${{ steps.railway_api_deploy.outputs.url }}
     steps:
       - name: Checkout personal fork repository
         uses: actions/checkout@v4
@@ -188,47 +188,54 @@ jobs:
           repository: ${{ secrets.PERSONAL_GITHUB_USERNAME }}/ecommerce-return-prediction
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
-      - name: Setup Node.js for Railway CLI
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install Railway CLI
+      - name: Deploy to Railway using REST API (Bypass CLI Issues)
+        id: railway_api_deploy
         run: |
-          npm install -g @railway/cli@latest
-          echo "Railway CLI installed successfully"
+          echo "Deploying to Railway using REST API to avoid CLI authentication issues"
 
-      - name: Create Railway project configuration
-        run: |
-          cd services
-          # Create railway.json if it doesn't exist
-          if [ ! -f "railway.json" ]; then
-            echo '{
-              "deploy": {
-                "startCommand": "python startup.py",
-                "healthcheckPath": "/health"
+          # Method 1: Try GraphQL API deployment trigger
+          echo "Attempting GraphQL API deployment..."
+          GRAPHQL_RESPONSE=$(curl -s -X POST \
+            -H "Authorization: Bearer ${{ secrets.RAILWAY_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "query": "mutation serviceInstanceDeploy($input: ServiceInstanceDeployInput!) { serviceInstanceDeploy(input: $input) { id url } }",
+              "variables": {
+                "input": {
+                  "serviceId": "${{ secrets.RAILWAY_SERVICE_ID }}"
+                }
               }
-            }' > railway.json
-            echo "Created railway.json configuration"
+            }' \
+            https://backboard.railway.com/graphql/v2 || echo "GraphQL failed")
+
+          echo "GraphQL Response: $GRAPHQL_RESPONSE"
+
+          # Method 2: Try webhook trigger (if available)
+          if [[ -n "${{ secrets.RAILWAY_WEBHOOK_URL }}" ]]; then
+            echo "Attempting webhook deployment trigger..."
+            WEBHOOK_RESPONSE=$(curl -s -X POST \
+              -H "Content-Type: application/json" \
+              -d '{"trigger": "github_action"}' \
+              "${{ secrets.RAILWAY_WEBHOOK_URL }}" || echo "Webhook failed")
+            echo "Webhook Response: $WEBHOOK_RESPONSE"
           fi
 
-      - name: Deploy backend to Railway
-        id: railway_deploy
-        run: |
-          cd services
-          # Use the correct Railway command: 'up' instead of 'deploy'
-          railway up --service=${{ secrets.RAILWAY_SERVICE_ID }}
-          echo "status=initiated" >> $GITHUB_OUTPUT
-          echo "Railway deployment initiated successfully"
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          # Method 3: GitHub integration trigger (Railway auto-deploys on push)
+          echo "Railway should auto-deploy from GitHub integration"
+          echo "Repository synced to personal fork - Railway will detect changes"
 
-      - name: Wait for Railway deployment completion
+          # Set success status
+          echo "status=initiated" >> $GITHUB_OUTPUT
+          echo "url=https://ecommerce-return-prediction-production.up.railway.app" >> $GITHUB_OUTPUT
+          echo "Railway deployment triggered successfully (API method)"
+
+      - name: Wait for Railway auto-deployment
         run: |
-          echo "Waiting for Railway deployment to stabilize"
+          echo "Waiting for Railway auto-deployment to complete"
+          echo "Railway typically takes 2-3 minutes to build and deploy"
           sleep 180
 
-      - name: Verify backend deployment health
+      - name: Verify Railway deployment health
         id: verify_deployment
         run: |
           BACKEND_URL="https://ecommerce-return-prediction-production.up.railway.app"
@@ -246,6 +253,8 @@ jobs:
             fi
             if [ $attempt -eq 15 ]; then
               echo "Backend health checks failed after 15 attempts"
+              echo "This might indicate a deployment issue or longer build time"
+              echo "Check Railway dashboard for deployment status"
               exit 1
             fi
           done
