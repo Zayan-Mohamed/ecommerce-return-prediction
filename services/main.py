@@ -52,9 +52,7 @@ app.add_middleware(
         "http://localhost:5173",  # Vite dev server
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
-        "https://ecommerce-return-prediction.vercel.app",  # Main Vercel domain
         "https://ecommerce-return-prediction-2.vercel.app",  # Numbered Vercel domain
-        "https://*.netlify.app"  # Netlify deployments
     ],
     allow_origin_regex=r"https://ecommerce-return-prediction.*\.vercel\.app",  # All Vercel subdomains/variants
     allow_credentials=True,
@@ -70,38 +68,38 @@ def include_routers():
     try:
         from api.prediction import router as prediction_router
         app.include_router(prediction_router)
-        logger.info("✅ Prediction router loaded")
+        logger.info("Prediction router loaded")
         routers_loaded += 1
     except Exception as e:
-        logger.warning(f"⚠️ Failed to load prediction router: {str(e)}")
+        logger.warning(f"Failed to load prediction router: {str(e)}")
     
     try:
         from api.order_processing import router as order_processing_router
         app.include_router(order_processing_router)
-        logger.info("✅ Order processing router loaded")
+        logger.info("Order processing router loaded")
         routers_loaded += 1
     except Exception as e:
-        logger.warning(f"⚠️ Failed to load order processing router: {str(e)}")
+        logger.warning(f"Failed to load order processing router: {str(e)}")
     
     try:
         from api.analytics import router as analytics_router
         app.include_router(analytics_router)
-        logger.info("✅ Analytics router loaded")
+        logger.info("Analytics router loaded")
         routers_loaded += 1
     except Exception as e:
-        logger.warning(f"⚠️ Failed to load analytics router: {str(e)}")
+        logger.warning(f"Failed to load analytics router: {str(e)}")
     
     # If no routers loaded successfully, use minimal fallback
     if routers_loaded == 0:
-        logger.warning("🔄 Loading minimal fallback router...")
+        logger.warning("Loading minimal fallback router...")
         try:
             from api.minimal import router as minimal_router
             app.include_router(minimal_router)
-            logger.info("✅ Minimal fallback router loaded")
+            logger.info("Minimal fallback router loaded")
         except Exception as e:
-            logger.error(f"❌ Failed to load minimal router: {str(e)}")
-    
-    logger.info(f"📊 Loaded {routers_loaded}/3 full routers")
+            logger.error(f"Failed to load minimal router: {str(e)}")
+
+    logger.info(f"Loaded {routers_loaded}/3 full routers")
 
 @app.get("/")
 def root():
