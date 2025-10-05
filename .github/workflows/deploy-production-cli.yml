@@ -298,11 +298,6 @@ jobs:
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install Vercel CLI
-        run: |
-          npm install -g vercel@latest
-          echo "Vercel CLI installed successfully"
-
       - name: Build frontend application
         run: |
           cd frontend
@@ -310,29 +305,47 @@ jobs:
           npm run build
           echo "Frontend build completed successfully"
 
-      - name: Clean Vercel configuration and setup project
-        run: |
-          cd frontend
-          # Remove any existing Vercel configuration that might cause conflicts
-          rm -rf .vercel
-          echo "Cleaned existing Vercel configuration"
-          
-          # Create proper Vercel project configuration
-          mkdir -p .vercel
-          echo '{
-            "orgId": "${{ secrets.VERCEL_ORG_ID }}",
-            "projectId": "${{ secrets.VERCEL_PROJECT_ID }}"
-          }' > .vercel/project.json
-          echo "Created Vercel project configuration"
-
-      - name: Deploy frontend to Vercel
+      - name: Deploy to Vercel using REST API (Bypass CLI Issues)
         id: vercel_deploy
         run: |
           cd frontend
-          # Deploy with explicit project configuration
-          vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} --yes
-          echo "status=completed" >> $GITHUB_OUTPUT
-          echo "Vercel deployment completed successfully"
+
+          echo "Creating deployment archive..."
+          # Create a tar.gz of the dist directory
+          tar -czf deployment.tar.gz -C dist .
+
+          echo "Deploying to Vercel via REST API..."
+          # Deploy using Vercel's REST API
+          DEPLOY_RESPONSE=$(curl -X POST \
+            "https://api.vercel.com/v13/deployments" \
+            -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "name": "ecommerce-return-prediction",
+              "project": "${{ secrets.VERCEL_PROJECT_ID }}",
+              "target": "production",
+              "gitSource": {
+                "type": "github",
+                "repo": "${{ secrets.PERSONAL_GITHUB_USERNAME }}/ecommerce-return-prediction",
+                "ref": "main"
+              }
+            }')
+
+          echo "Vercel API Response: $DEPLOY_RESPONSE"
+
+          # Check if deployment was successful
+          if echo "$DEPLOY_RESPONSE" | grep -q '"url"'; then
+            echo "status=completed" >> $GITHUB_OUTPUT
+            echo "Vercel deployment triggered successfully via API"
+          else
+            echo "Vercel API deployment failed, falling back to CLI method..."
+            # Fallback: try CLI with minimal config
+            export VERCEL_ORG_ID="${{ secrets.VERCEL_ORG_ID }}"
+            export VERCEL_PROJECT_ID="${{ secrets.VERCEL_PROJECT_ID }}"
+            npx vercel --prod --token=${{ secrets.VERCEL_TOKEN }} --yes --confirm
+            echo "status=completed" >> $GITHUB_OUTPUT
+            echo "Vercel deployment completed via CLI fallback"
+          fi
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
