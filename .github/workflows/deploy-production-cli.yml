@@ -1,0 +1,96 @@
+name: Deploy to Production (Alternative)
+
+on:
+    push:
+        branches: [main]
+    workflow_dispatch: # Allow manual deployment
+
+jobs:
+    deploy-frontend:
+        name: Deploy Frontend to Vercel (CLI)
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "18"
+                  cache: "npm"
+                  cache-dependency-path: frontend/package-lock.json
+
+            - name: Install Vercel CLI
+              run: npm install -g vercel@latest
+
+            - name: Install dependencies and build
+              run: |
+                  cd frontend
+                  npm ci
+                  npm run build
+
+            - name: Deploy to Vercel
+              run: |
+                  vercel --token=${{ secrets.VERCEL_TOKEN }} --prod --yes
+              env:
+                  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+                  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+                  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+    deploy-backend:
+        name: Deploy Backend to Railway (CLI)
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "18"
+
+            - name: Install Railway CLI
+              run: npm install -g @railway/cli
+
+            - name: Deploy to Railway
+              run: |
+                  cd services
+                  railway deploy --service=${{ secrets.RAILWAY_SERVICE_ID }}
+              env:
+                  RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+    health-check:
+        name: Post-deployment Health Check
+        needs: [deploy-frontend, deploy-backend]
+        runs-on: ubuntu-latest
+        steps:
+            - name: Wait for deployments to stabilize
+              run: sleep 60
+
+            - name: Check Frontend Health
+              run: |
+                  echo "Testing frontend..."
+                  curl -f -s https://ecommerce-return-prediction.vercel.app/ > /dev/null || exit 1
+                  echo "✅ Frontend is healthy"
+
+            - name: Check Backend Health
+              run: |
+                  echo "Testing backend..."
+                  curl -f -s https://ecommerce-return-prediction-production.up.railway.app/health > /dev/null || exit 1
+                  echo "✅ Backend is healthy"
+
+            - name: Test Frontend-Backend Connection
+              run: |
+                  echo "Testing CORS and connectivity..."
+                  curl -H "Origin: https://ecommerce-return-prediction.vercel.app" \
+                       -H "Access-Control-Request-Method: GET" \
+                       -X OPTIONS \
+                       -s \
+                       https://ecommerce-return-prediction-production.up.railway.app/health > /dev/null || exit 1
+                  echo "✅ Frontend-Backend connection is working"
+
+            - name: Final deployment summary
+              run: |
+                  echo "🚀 Deployment completed successfully!"
+                  echo "Frontend: https://ecommerce-return-prediction.vercel.app/"
+                  echo "Backend: https://ecommerce-return-prediction-production.up.railway.app/"
