@@ -305,25 +305,31 @@ jobs:
           npm run build
           echo "Frontend build completed successfully"
 
-      - name: Deploy to Vercel (Simplified Direct Upload)
+      - name: Deploy to Vercel (Prebuilt Output Method)
         id: vercel_deploy
         run: |
-          cd frontend
+          echo "Deploying to Vercel using prebuilt method..."
 
-          echo "Deploying to Vercel using direct upload method..."
-
-          # Create .vercel directory with project configuration
-          mkdir -p .vercel
-          echo '{
-            "orgId": "${{ secrets.VERCEL_ORG_ID }}",
-            "projectId": "${{ secrets.VERCEL_PROJECT_ID }}"
-          }' > .vercel/project.json
-
-          # Use vercel CLI with dist directory directly
-          npx vercel deploy dist \
+          # Deploy the built frontend directly using absolute path
+          npx vercel deploy frontend/dist \
             --token=${{ secrets.VERCEL_TOKEN }} \
+            --scope=${{ secrets.VERCEL_ORG_ID }} \
+            --name=ecommerce-return-prediction \
             --prod \
-            --yes
+            --prebuilt \
+            --yes \
+            2>&1 || {
+              echo "Prebuilt deployment failed, trying alternative method..."
+              # Alternative: Deploy from frontend directory with force flag
+              cd frontend
+              npx vercel --token=${{ secrets.VERCEL_TOKEN }} \
+                --scope=${{ secrets.VERCEL_ORG_ID }} \
+                --prod \
+                --yes \
+                --force \
+                --no-clipboard \
+                dist
+            }
 
           echo "status=completed" >> $GITHUB_OUTPUT
           echo "Vercel deployment completed successfully"
