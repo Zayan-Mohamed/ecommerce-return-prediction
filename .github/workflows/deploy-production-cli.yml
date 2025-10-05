@@ -348,18 +348,18 @@ jobs:
           FRONTEND_URL="https://ecommerce-return-prediction-2.vercel.app"
 
           echo "Testing CORS preflight request from frontend to backend"
-          CORS_RESPONSE=$(curl -H "Origin: $FRONTEND_URL" \
+          HTTP_CODE=$(curl -H "Origin: $FRONTEND_URL" \
                               -H "Access-Control-Request-Method: GET" \
                               -H "Access-Control-Request-Headers: Content-Type" \
                               -X OPTIONS \
-                              -s -w "%{http_code}" \
+                              -s -o /dev/null -w "%{http_code}" \
                               --max-time 10 \
                               "$BACKEND_URL/health")
 
-          if [[ "$CORS_RESPONSE" == "200" ]]; then
-            echo "CORS configuration verified successfully"
+          if [[ "$HTTP_CODE" == "200" ]] || [[ "$HTTP_CODE" == "204" ]]; then
+            echo "CORS configuration verified successfully (HTTP $HTTP_CODE)"
           else
-            echo "CORS configuration test failed with response code: $CORS_RESPONSE"
+            echo "CORS configuration test failed with HTTP code: $HTTP_CODE"
             exit 1
           fi
 
@@ -369,17 +369,17 @@ jobs:
           FRONTEND_URL="https://ecommerce-return-prediction.vercel.app"
 
           echo "Testing API GET request with frontend origin"
-          API_RESPONSE=$(curl -X GET \
+          HTTP_CODE=$(curl -X GET \
                              -H "Accept: application/json" \
                              -H "Origin: $FRONTEND_URL" \
-                             -s -w "%{http_code}" \
+                             -s -o /dev/null -w "%{http_code}" \
                              --max-time 15 \
                              "$BACKEND_URL/health")
 
-          if [[ "$API_RESPONSE" == "200" ]]; then
-            echo "API connectivity from frontend verified successfully"
+          if [[ "$HTTP_CODE" == "200" ]]; then
+            echo "API connectivity from frontend verified successfully (HTTP $HTTP_CODE)"
           else
-            echo "API connectivity test failed with response code: $API_RESPONSE"
+            echo "API connectivity test failed with HTTP code: $HTTP_CODE"
             exit 1
           fi
 
@@ -389,7 +389,7 @@ jobs:
           FRONTEND_URL="https://ecommerce-return-prediction.vercel.app"
 
           echo "Testing prediction endpoint with sample data"
-          PREDICTION_RESPONSE=$(curl -X POST \
+          HTTP_CODE=$(curl -X POST \
                                    -H "Content-Type: application/json" \
                                    -H "Origin: $FRONTEND_URL" \
                                    -d '{
@@ -401,14 +401,14 @@ jobs:
                                      "age": 32,
                                      "location": "New York"
                                    }' \
-                                   -s -w "%{http_code}" \
+                                   -s -o /dev/null -w "%{http_code}" \
                                    --max-time 20 \
                                    "$BACKEND_URL/predict/single")
 
-          if [[ "$PREDICTION_RESPONSE" == "200" ]]; then
-            echo "Prediction endpoint functionality verified successfully"
+          if [[ "$HTTP_CODE" == "200" ]]; then
+            echo "Prediction endpoint functionality verified successfully (HTTP $HTTP_CODE)"
           else
-            echo "Prediction endpoint test failed with response code: $PREDICTION_RESPONSE"
+            echo "Prediction endpoint test failed with HTTP code: $HTTP_CODE"
             exit 1
           fi
 
