@@ -672,12 +672,9 @@ const Dashboard = () => {
                           className="w-full px-3 py-2 border rounded-md"
                         >
                           <option value="">Select location</option>
-                          <option value="New York">New York</option>
-                          <option value="California">California</option>
-                          <option value="Texas">Texas</option>
-                          <option value="Florida">Florida</option>
-                          <option value="Washington">Washington</option>
-                          <option value="Other">Other</option>
+                          <option value="Urban">Urban</option>
+                          <option value="Suburban">Suburban</option>
+                          <option value="Rural">Rural</option>
                         </select>
                       </div>
 
@@ -708,10 +705,9 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
 
+              {/* Always render PredictionResult to show empty state */}
               <div>
-                {predictionResult && (
-                  <PredictionResult result={predictionResult} />
-                )}
+                <PredictionResult result={predictionResult} />
               </div>
             </div>
           )}
