@@ -298,37 +298,27 @@ jobs:
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Build frontend application
+      - name: Install dependencies and build frontend
         run: |
           cd frontend
           npm ci --silent
           npm run build
           echo "Frontend build completed successfully"
 
-      - name: Link Vercel Project
-        working-directory: frontend
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: |
-          echo "Linking Vercel project..."
-          # Pull project configuration to properly link
-          npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-          echo "Project linked successfully"
-
-      - name: Deploy to Vercel
+      - name: Deploy to Vercel (Using Official GitHub Action)
         id: vercel_deploy
-        working-directory: frontend
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: |
-          echo "Deploying to Vercel..."
-          # Now deploy with linked project
-          npx vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} --yes
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: "--prod"
+          working-directory: ./frontend
 
+      - name: Set deployment status
+        run: |
           echo "status=completed" >> $GITHUB_OUTPUT
-          echo "Vercel deployment completed successfully"
+          echo "Vercel deployment completed successfully via GitHub Action"
 
       - name: Verify frontend deployment
         id: verify_frontend
