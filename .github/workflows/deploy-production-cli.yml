@@ -202,7 +202,7 @@ jobs:
         id: railway_deploy
         run: |
           cd services
-          railway deploy --detach
+          railway up --service=${{ secrets.RAILWAY_SERVICE_ID }}
           echo "status=initiated" >> $GITHUB_OUTPUT
           echo "Railway deployment initiated successfully"
         env:
