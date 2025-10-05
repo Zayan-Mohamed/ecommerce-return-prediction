@@ -62,3 +62,7 @@ MANIFEST
 .env.production.local
 services/.env.local
 frontend/.env.local
+
+# Vercel deployment configuration
+.vercel
+frontend/.vercel

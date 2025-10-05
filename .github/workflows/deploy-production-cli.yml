@@ -310,11 +310,27 @@ jobs:
           npm run build
           echo "Frontend build completed successfully"
 
+      - name: Clean Vercel configuration and setup project
+        run: |
+          cd frontend
+          # Remove any existing Vercel configuration that might cause conflicts
+          rm -rf .vercel
+          echo "Cleaned existing Vercel configuration"
+          
+          # Create proper Vercel project configuration
+          mkdir -p .vercel
+          echo '{
+            "orgId": "${{ secrets.VERCEL_ORG_ID }}",
+            "projectId": "${{ secrets.VERCEL_PROJECT_ID }}"
+          }' > .vercel/project.json
+          echo "Created Vercel project configuration"
+
       - name: Deploy frontend to Vercel
         id: vercel_deploy
         run: |
           cd frontend
-          vercel --token=${{ secrets.VERCEL_TOKEN }} --prod --yes
+          # Deploy with explicit project configuration
+          vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} --yes
           echo "status=completed" >> $GITHUB_OUTPUT
           echo "Vercel deployment completed successfully"
         env:
