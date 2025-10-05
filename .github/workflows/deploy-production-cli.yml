@@ -305,21 +305,6 @@ jobs:
           npm run build
           echo "Frontend build completed successfully"
 
-      - name: Deploy to Vercel (Using Official GitHub Action)
-        id: vercel_deploy
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: "--prod"
-          working-directory: ./frontend
-
-      - name: Set deployment status
-        run: |
-          echo "status=completed" >> $GITHUB_OUTPUT
-          echo "Vercel deployment completed successfully via GitHub Action"
-
       - name: Verify frontend deployment
         id: verify_frontend
         run: |
