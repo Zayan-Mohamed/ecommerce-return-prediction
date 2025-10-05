@@ -305,19 +305,28 @@ jobs:
           npm run build
           echo "Frontend build completed successfully"
 
-      - name: Deploy to Vercel (Official Method)
+      - name: Link Vercel Project
+        working-directory: frontend
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          echo "Linking Vercel project..."
+          # Pull project configuration to properly link
+          npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+          echo "Project linked successfully"
+
+      - name: Deploy to Vercel
         id: vercel_deploy
         working-directory: frontend
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
-          echo "Deploying to Vercel with environment variables..."
-          
-          # When VERCEL_ORG_ID and VERCEL_PROJECT_ID are set as env vars,
-          # Vercel CLI bypasses project linking and uses these directly
+          echo "Deploying to Vercel..."
+          # Now deploy with linked project
           npx vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} --yes
-          
+
           echo "status=completed" >> $GITHUB_OUTPUT
           echo "Vercel deployment completed successfully"
 
